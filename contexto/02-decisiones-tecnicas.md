@@ -12,7 +12,7 @@
 - CORS habilitado para el frontend.
 
 ### Frontend
-- **Angular 18** (standalone components, sin NgModules) como **SPA**.
+- **Angular 19** (standalone components, sin NgModules) como **SPA**.
 - **TailwindCSS 3** para estilos.
 - **ng2-charts / Chart.js** para el gráfico de evolución (ligero y estable).
 - `HttpClient` + servicios para consumir la API (sin Axios; es Angular).
@@ -35,6 +35,8 @@
 4. **Persistencia y ahorro de tokens.** El sistema prioriza el uso de la base de datos local para todos los cálculos. Los datos de partidos recientes se obtienen una única vez vía `ExternalApiFootballDataProvider` y se cargan en la BD. Esto evita llamadas redundantes a APIs externas, ahorrando créditos de API y tokens de procesamiento en cada reinicio o recálculo de ranking.
 5. **Probabilidad = softmax sobre el score final.** Convierte los puntajes 0–100 en una distribución que suma 100% sobre los 48 equipos (ver doc 04).
 6. **Angular standalone + signals/servicios simples.** Menos ceremonia que NgModules; alineado con Angular moderno.
+7. **Sincronización Integral (WorldCupSyncService).** Se implementó un sistema dedicado para consumir la API de fútbol y sincronizar en tiempo real los partidos y equipos del Mundial 2026, con soporte para UPSERT y auditoría de respuestas raw.
+8. **Optimización de Rendimiento.** Uso de cache de aplicación para el ranking y optimización de consultas SQL (agregaciones sobre historial) para garantizar respuestas instantáneas en la UI.
 
 ## Estrategia de gestión de tokens (API Credits)
 Para maximizar el uso de la capa gratuita de API-Football (100 peticiones/día), se han tomado las siguientes medidas:

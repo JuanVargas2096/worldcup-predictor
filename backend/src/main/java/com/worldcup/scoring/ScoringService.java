@@ -36,6 +36,9 @@ public class ScoringService {
     @Inject
     ScoreExplanationBuilder explanationBuilder;
 
+    @Inject
+    RankingService rankingService;
+
     @Transactional
     public int recalculateAll() {
         ScoringConfig cfg = ScoringConfig.active();
@@ -65,6 +68,10 @@ public class ScoringService {
         for (TeamScore s : snapshots) {
             s.persist();
         }
+        
+        // Invalidamos el cache del ranking para que el próximo acceso obtenga los datos frescos
+        rankingService.refreshCache();
+        
         LOG.infof("Ranking recalculado para %d equipos.", snapshots.size());
         return snapshots.size();
     }

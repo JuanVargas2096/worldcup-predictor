@@ -56,20 +56,26 @@ public class TeamScore extends PanacheEntityBase {
     public String explanation;
 
     /** Último snapshot de cada equipo (vigente), ordenado por score desc. 
-     *  Usa join fetch para evitar N+1 al obtener datos de los equipos. */
+     *  Usa una subconsulta agrupada para mayor eficiencia. */
     public static List<TeamScore> latestRanking() {
         return getEntityManager().createQuery("""
                 select ts from TeamScore ts
                 join fetch ts.team
-                where ts.calculatedAt = (
-                    select max(ts2.calculatedAt) from TeamScore ts2 where ts2.team = ts.team
+                where ts.calculatedAt in (
+                    select max(ts2.calculatedAt) from TeamScore ts2 group by ts2.team
                 )
                 order by ts.finalScore desc
                 """, TeamScore.class).getResultList();
     }
 
     public static List<TeamScore> historyForTeam(UUID teamId) {
-        return list("team.id = ?1 order by calculatedAt asc", teamId);
+        // Obtenemos los últimos 100 puntos y los re-ordenamos cronológicamente para el gráfico
+        List<TeamScore> list = find("team.id = ?1 order by calculatedAt desc", teamId)
+                .page(0, 100)
+                .list();
+        return list.stream()
+                .sorted((a, b) -> a.calculatedAt.compareTo(b.calculatedAt))
+                .toList();
     }
 
     public static TeamScore latestForTeam(UUID teamId) {

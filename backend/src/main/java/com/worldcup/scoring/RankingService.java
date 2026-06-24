@@ -5,6 +5,7 @@ import com.worldcup.team.Team;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,36 +16,52 @@ public class RankingService {
     @Inject
     ScoringService scoringService;
 
+    private List<TeamScore> cachedRanking;
+    private LocalDateTime lastUpdate;
+
     public List<RankingEntryDto> ranking() {
-        List<TeamScore> scores = TeamScore.latestRanking();
+        List<TeamScore> scores = getLatestRanking();
         int[] pos = {0};
         return scores.stream().map(ts -> toEntry(++pos[0], ts)).toList();
     }
 
-    public RankingEntryDto entryForTeam(UUID teamId) {
-        TeamScore latest = TeamScore.latestForTeam(teamId);
-        if (latest == null) return null;
+    /** Obtiene el ranking actual, usando cache por 1 minuto para evitar latencias. */
+    private synchronized List<TeamScore> getLatestRanking() {
+        if (cachedRanking == null || lastUpdate == null || lastUpdate.isBefore(LocalDateTime.now().minusMinutes(1))) {
+            refreshCache();
+        }
+        return cachedRanking;
+    }
 
-        // Para saber la posición, obtenemos el ranking actual (solo los objetos TeamScore)
-        // evitando llamar a ranking() que mapea todos a DTO con sus subconsultas de partidos.
-        List<TeamScore> currentRanking = TeamScore.latestRanking();
+    public synchronized void refreshCache() {
+        cachedRanking = TeamScore.latestRanking();
+        lastUpdate = LocalDateTime.now();
+    }
+
+    public RankingEntryDto entryForTeam(UUID teamId) {
+        List<TeamScore> currentRanking = getLatestRanking();
         int position = 0;
+        TeamScore latest = null;
+        
         for (int i = 0; i < currentRanking.size(); i++) {
-            if (currentRanking.get(i).id.equals(latest.id)) {
+            TeamScore ts = currentRanking.get(i);
+            if (ts.team.id.equals(teamId)) {
                 position = i + 1;
+                latest = ts;
                 break;
             }
         }
 
-        if (position == 0) return null;
+        if (latest == null) return null;
         return toEntry(position, latest);
     }
 
     public TeamDetailDto detailForTeam(UUID teamId) {
-        Team team = Team.findById(teamId);
-        if (team == null) return null;
         RankingEntryDto entry = entryForTeam(teamId);
         if (entry == null) return null;
+        
+        Team team = Team.findById(teamId);
+        if (team == null) return null;
 
         FormStats stats = scoringService.computeFormStats(team);
         List<ScoreHistoryPointDto> history = TeamScore.historyForTeam(teamId)

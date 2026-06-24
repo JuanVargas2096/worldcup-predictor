@@ -1,6 +1,6 @@
 # 09 — Progreso y Pendientes (BITÁCORA)
 
-> **Empieza por aquí si retomas el proyecto.** Última actualización: 2026-06-23.
+> **Empieza por aquí si retomas el proyecto.** Última actualización: 2026-06-24.
 
 ## Estado general
 MVP en construcción. Datos reales de equipos/grupos cargados. Backend y frontend
@@ -26,6 +26,10 @@ escritos para levantarse con `docker compose up --build`.
 - [x] Filosofía "DB-First" para ahorro de tokens de API y procesamiento, con persistencia obligatoria.
 - [x] Script de bash para importación offline y generación de semillas SQL.
 - [x] Dockerfiles + docker-compose.yml + README.
+- [x] Implementación completa de sincronización del Mundial 2026 (fixtures reales).
+- [x] Tabla de parámetros dinámicos (`app_parameter`) para control de ejecución del scheduler.
+- [x] Optimización de rendimiento: cache de ranking y HQL eficiente para historial.
+- [x] Resiliencia en el arranque: el sistema inicia incluso con fallos en APIs externas.
 
 ## Pendiente / Próximos pasos (TODO)
 - [x] Verificar build real: actualizado a Java 21 y Angular 19.
@@ -34,7 +38,9 @@ escritos para levantarse con `docker compose up --build`.
       (API-Football / Sportmonks / football-data.org) para forma reciente real.
 - [x] Tests (unit del ScoringService; e2e mínimos).
 - [x] Scheduler diario (RankingScheduler) — implementado.
-- [ ] Persistir fixtures con resultados reales según avanza el torneo.
+- [x] Persistir fixtures con resultados reales según avanza el torneo (Sincronización v3).
+- [ ] Pruebas unitarias de los nuevos servicios de sincronización.
+- [ ] Dashboard de administración para parámetros de configuración.
 
 ## Riesgos conocidos
 - Java local es 21 (actualizado); el build se recomienda dentro de Docker.
