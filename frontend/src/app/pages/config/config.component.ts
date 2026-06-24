@@ -16,8 +16,8 @@ interface WeightField {
   imports: [CommonModule, FormsModule],
   template: `
     <section class="max-w-xl mx-auto">
-      <h1 class="text-2xl font-bold text-night mb-1">Configuración del modelo</h1>
-      <p class="text-sm text-slate-500 mb-4">
+      <h1 class="text-xl sm:text-2xl font-bold text-night mb-1">Configuración del modelo</h1>
+      <p class="text-xs sm:text-sm text-slate-500 mb-4">
         Ajusta el peso de cada componente. La suma debe ser exactamente 100%.
       </p>
 
@@ -29,7 +29,7 @@ interface WeightField {
 
       <div *ngIf="loading" class="text-slate-500 py-10 text-center">Cargando…</div>
 
-      <form *ngIf="!loading" (ngSubmit)="save()" class="bg-white rounded-xl shadow p-5 space-y-5">
+      <form *ngIf="!loading" (ngSubmit)="save()" class="bg-white rounded-xl shadow p-4 sm:p-5 space-y-5">
         <div *ngFor="let f of fields">
           <div class="flex justify-between mb-1">
             <label class="text-sm font-semibold text-night">{{ f.label }}</label>

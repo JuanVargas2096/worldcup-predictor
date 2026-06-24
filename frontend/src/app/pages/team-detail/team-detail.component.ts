@@ -34,21 +34,21 @@ interface BreakdownRow {
 
     <section *ngIf="detail as d" class="mt-3 space-y-6">
       <!-- Cabecera -->
-      <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4 flex-wrap" [class.opacity-75]="d.ranking.isEliminated">
-        <span class="text-5xl" [class.grayscale]="d.ranking.isEliminated">{{ d.ranking.flagEmoji }}</span>
-        <div class="flex-1">
-          <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-bold text-night" [class.line-through]="d.ranking.isEliminated">{{ d.ranking.name }}</h1>
+      <div class="bg-white rounded-xl shadow p-4 sm:p-5 flex items-center gap-3 sm:gap-4" [class.opacity-75]="d.ranking.isEliminated">
+        <span class="text-4xl sm:text-5xl shrink-0" [class.grayscale]="d.ranking.isEliminated">{{ d.ranking.flagEmoji }}</span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-xl sm:text-2xl font-bold text-night" [class.line-through]="d.ranking.isEliminated">{{ d.ranking.name }}</h1>
             <span *ngIf="d.ranking.isEliminated" class="text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Eliminado</span>
           </div>
-          <p class="text-sm text-slate-500">
+          <p class="text-xs sm:text-sm text-slate-500">
             {{ d.ranking.confederation }} · Grupo {{ d.ranking.groupLetter }} ·
             Posición #{{ d.ranking.position }}
           </p>
         </div>
-        <div class="text-right">
-          <div class="text-3xl font-bold text-emerald-600" [class.text-slate-400]="d.ranking.isEliminated">{{ d.ranking.finalScore | number:'1.1-1' }}</div>
-          <div class="text-xs text-slate-500">Score · {{ d.ranking.winProbability | number:'1.1-1' }}% título</div>
+        <div class="text-right shrink-0">
+          <div class="text-2xl sm:text-3xl font-bold text-emerald-600" [class.text-slate-400]="d.ranking.isEliminated">{{ d.ranking.finalScore | number:'1.1-1' }}</div>
+          <div class="text-[10px] sm:text-xs text-slate-500">Score · {{ d.ranking.winProbability | number:'1.1-1' }}% título</div>
         </div>
       </div>
 
@@ -118,11 +118,15 @@ interface BreakdownRow {
         </div>
         <table *ngIf="d.ranking.lastFive.length" class="min-w-full text-sm">
           <tbody>
-            <tr *ngFor="let m of d.ranking.lastFive" class="border-t border-slate-100">
-              <td class="py-2 text-slate-400 w-24">{{ m.date }}</td>
-              <td class="py-2">{{ m.opponentFlag }} {{ m.opponentName }}</td>
-              <td class="py-2 text-xs text-slate-400">{{ m.competition }}</td>
-              <td class="py-2 text-right font-semibold">{{ m.goalsFor }} - {{ m.goalsAgainst }}</td>
+            <tr *ngFor="let m of d.ranking.lastFive" class="border-t border-slate-100 align-top">
+              <td class="py-2 pr-2 text-xs sm:text-sm text-slate-400 whitespace-nowrap">{{ m.date }}</td>
+              <td class="py-2">
+                <div class="truncate">{{ m.opponentFlag }} {{ m.opponentName }}</div>
+                <!-- Competición: bajo el rival en móvil (la columna dedicada se oculta) -->
+                <div class="text-[11px] text-slate-400 truncate sm:hidden">{{ m.competition }}</div>
+              </td>
+              <td class="py-2 text-xs text-slate-400 hidden sm:table-cell">{{ m.competition }}</td>
+              <td class="py-2 pl-2 text-right font-semibold whitespace-nowrap">{{ m.goalsFor }} - {{ m.goalsAgainst }}</td>
             </tr>
           </tbody>
         </table>

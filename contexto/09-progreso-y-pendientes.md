@@ -137,6 +137,26 @@ escritos para levantarse con `docker compose up --build`.
   registry, `pull_policy: always`, sin publicar puertos. `PUBLIC_HOST=worldcup-predictions.mrvargas.net`.
 - `.env.example` con `PUBLIC_HOST` y `LETSENCRYPT_EMAIL`. Raíz `docker-compose.yml` queda para local.
 
+### Sesión 2026-06-24 (parte 8 — responsive mobile + orden descendente en /#/mundial)
+- [x] **/#/mundial orden descendente**: `live.component.ts` → `groupByRound()` ahora ordena
+      por `fixtureDate` DESC antes de agrupar. Las rondas se muestran con la más reciente
+      arriba (el `Map` preserva orden de inserción) y dentro de cada ronda también desc.
+      Helper `time()` tolera fechas nulas/inválidas. Hecho en el FRONTEND (no se recompila
+      Quarkus): el endpoint sigue devolviendo `asc`, el orden visible lo controla la SPA.
+- [x] **Mobile /#/mundial**: la fila de partido pasó de `flex` con `flex-1` (sin truncado →
+      nombres largos rompían el layout) a un grid `[1fr_auto_1fr]` con `min-w-0` + `truncate`,
+      logos/tipos escalados (`w-5 sm:w-6`, `text-sm sm:text-base`), gaps/paddings reducidos.
+- [x] **Mobile ranking**: tabla responsive sin scroll horizontal. Columna **Grupo** oculta
+      (`hidden sm:table-cell`) → chip junto al nombre; columna **Últimos 5** oculta
+      (`hidden md:table-cell`) → form badges bajo el nombre; barra de score y paddings adaptados.
+- [x] **Mobile detalle de equipo**: cabecera apila score bajo el nombre en móvil; tabla de
+      "Últimos 5" oculta la columna de competición en pantallas pequeñas y compacta la fecha.
+- [x] **Mobile configuración**: títulos/paddings escalados (ya era full-width con `max-w-xl`).
+- [x] Verificado: `ng build --configuration production` → bundle generado sin errores.
+- Regla general responsive: en filas de "VS" usar grid `[1fr_auto_1fr]` + `min-w-0`/`truncate`
+  (no `flex-1` sin truncado); en tablas anchas ocultar columnas secundarias con
+  `hidden sm:table-cell`/`md:table-cell` y reubicar esa data bajo la celda principal en móvil.
+
 ### Notas / pendientes derivados
 - La forma reciente del predictor (`matches`) sigue siendo mock salvo que se pulse
   "Importar partidos" o se ponga `DATA_PROVIDER=external`. El `ExternalApiFootballDataProvider`

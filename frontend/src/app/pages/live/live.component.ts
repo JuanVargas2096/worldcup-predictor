@@ -14,16 +14,16 @@ interface RoundGroup {
   imports: [CommonModule],
   template: `
     <section>
-      <div class="flex items-center justify-between mb-1 flex-wrap gap-3">
-        <h1 class="text-2xl font-bold text-night">Mundial 2026 · Partidos reales</h1>
+      <div class="flex items-start justify-between mb-1 gap-3 flex-wrap">
+        <h1 class="text-xl sm:text-2xl font-bold text-night">Mundial 2026 · Partidos reales</h1>
         <button (click)="sync()" [disabled]="syncing"
-                class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md text-sm font-semibold transition">
+                class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap">
           {{ syncing ? 'Sincronizando…' : '↻ Sincronizar ahora' }}
         </button>
       </div>
-      <p class="text-sm text-slate-500 mb-4">
+      <p class="text-xs sm:text-sm text-slate-500 mb-4">
         Resultados y calendario reales sincronizados desde API-Football
-        (se actualizan automáticamente hasta 6 veces al día).
+        (se actualizan automáticamente hasta 6 veces al día). Se muestran los más recientes primero.
       </p>
 
       <div *ngIf="message" class="px-4 py-3 rounded mb-4 text-sm"
@@ -42,32 +42,33 @@ interface RoundGroup {
       </div>
 
       <div *ngFor="let g of rounds" class="mb-6">
-        <h2 class="text-sm uppercase tracking-wide text-slate-400 font-semibold mb-2">{{ g.round }}</h2>
+        <h2 class="text-xs sm:text-sm uppercase tracking-wide text-slate-400 font-semibold mb-2">{{ g.round }}</h2>
         <div class="bg-white rounded-xl shadow divide-y divide-slate-100">
-          <div *ngFor="let f of g.fixtures" class="flex items-center px-4 py-3 gap-3">
+          <div *ngFor="let f of g.fixtures"
+               class="grid grid-cols-[1fr_auto_1fr] items-center px-2 sm:px-4 py-3 gap-2 sm:gap-3">
             <!-- Local -->
-            <div class="flex items-center gap-2 flex-1 justify-end text-right">
-              <span class="font-medium" [class.font-bold]="f.homeWinner">{{ f.homeTeamName }}</span>
-              <img *ngIf="f.homeTeamLogo" [src]="f.homeTeamLogo" alt="" class="w-6 h-6 object-contain" />
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0 justify-end text-right">
+              <span class="font-medium text-sm sm:text-base truncate" [class.font-bold]="f.homeWinner">{{ f.homeTeamName }}</span>
+              <img *ngIf="f.homeTeamLogo" [src]="f.homeTeamLogo" alt="" class="w-5 h-5 sm:w-6 sm:h-6 object-contain shrink-0" />
             </div>
             <!-- Marcador / estado -->
-            <div class="text-center min-w-[88px]">
-              <div *ngIf="hasScore(f)" class="font-bold text-night text-lg">
+            <div class="text-center px-1 min-w-[64px] sm:min-w-[88px]">
+              <div *ngIf="hasScore(f)" class="font-bold text-night text-base sm:text-lg leading-tight">
                 {{ f.goalsHome }} - {{ f.goalsAway }}
               </div>
-              <div *ngIf="!hasScore(f)" class="text-xs text-slate-500">
+              <div *ngIf="!hasScore(f)" class="text-xs text-slate-500 leading-tight">
                 {{ f.fixtureDate | date:'dd/MM HH:mm' }}
               </div>
-              <div class="text-[10px] uppercase tracking-wide"
+              <div class="text-[9px] sm:text-[10px] uppercase tracking-wide"
                    [class.text-rose-600]="isLive(f)"
                    [class.text-slate-400]="!isLive(f)">
                 {{ statusLabel(f) }}
               </div>
             </div>
             <!-- Visitante -->
-            <div class="flex items-center gap-2 flex-1">
-              <img *ngIf="f.awayTeamLogo" [src]="f.awayTeamLogo" alt="" class="w-6 h-6 object-contain" />
-              <span class="font-medium" [class.font-bold]="f.awayWinner">{{ f.awayTeamName }}</span>
+            <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              <img *ngIf="f.awayTeamLogo" [src]="f.awayTeamLogo" alt="" class="w-5 h-5 sm:w-6 sm:h-6 object-contain shrink-0" />
+              <span class="font-medium text-sm sm:text-base truncate" [class.font-bold]="f.awayWinner">{{ f.awayTeamName }}</span>
             </div>
           </div>
         </div>
@@ -125,14 +126,22 @@ export class LiveComponent implements OnInit {
     });
   }
 
+  /** Orden descendente: los partidos más recientes primero, tanto entre rondas como dentro de cada una. */
   private groupByRound(list: WorldCupFixtureItem[]): RoundGroup[] {
+    const sorted = [...list].sort((a, b) => this.time(b) - this.time(a));
     const map = new Map<string, WorldCupFixtureItem[]>();
-    for (const f of list) {
+    for (const f of sorted) {
       const key = f.round || 'Sin ronda';
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(f);
     }
+    // El Map preserva el orden de inserción → la primera ronda es la del partido más reciente.
     return Array.from(map.entries()).map(([round, fixtures]) => ({ round, fixtures }));
+  }
+
+  private time(f: WorldCupFixtureItem): number {
+    const t = f.fixtureDate ? Date.parse(f.fixtureDate) : NaN;
+    return isNaN(t) ? 0 : t;
   }
 
   hasScore(f: WorldCupFixtureItem): boolean {

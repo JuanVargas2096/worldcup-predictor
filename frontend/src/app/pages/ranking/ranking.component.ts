@@ -32,16 +32,16 @@ import { FormBadgesComponent } from '../../components/form-badges.component';
         Cargando ranking…
       </div>
 
-      <div *ngIf="rankings.length" class="overflow-x-auto bg-white rounded-xl shadow">
+      <div *ngIf="rankings.length" class="bg-white rounded-xl shadow overflow-hidden">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-100 text-slate-600 text-left">
             <tr>
-              <th class="px-3 py-3 w-12">#</th>
-              <th class="px-3 py-3">Selección</th>
-              <th class="px-3 py-3 text-center">Grupo</th>
-              <th class="px-3 py-3 text-center">Score</th>
-              <th class="px-3 py-3 text-center">Prob. título</th>
-              <th class="px-3 py-3">Últimos 5</th>
+              <th class="px-2 sm:px-3 py-3 w-10 sm:w-12">#</th>
+              <th class="px-2 sm:px-3 py-3">Selección</th>
+              <th class="px-3 py-3 text-center hidden sm:table-cell">Grupo</th>
+              <th class="px-2 sm:px-3 py-3 text-center">Score</th>
+              <th class="px-2 sm:px-3 py-3 text-center">Prob.</th>
+              <th class="px-3 py-3 hidden md:table-cell">Últimos 5</th>
             </tr>
           </thead>
           <tbody>
@@ -49,36 +49,41 @@ import { FormBadgesComponent } from '../../components/form-badges.component';
                 [routerLink]="['/equipo', r.teamId]"
                 class="border-t border-slate-100 hover:bg-emerald-50 cursor-pointer"
                 [class.opacity-50]="r.isEliminated">
-              <td class="px-3 py-3 font-bold"
+              <td class="px-2 sm:px-3 py-3 font-bold"
                   [class.text-amber-500]="r.position <= 3 && !r.isEliminated">{{ r.position }}</td>
-              <td class="px-3 py-3">
+              <td class="px-2 sm:px-3 py-3">
                 <div class="flex items-center gap-2">
-                  <span class="text-xl" [class.grayscale]="r.isEliminated">{{ r.flagEmoji }}</span>
-                  <div>
-                    <div class="flex items-center gap-1">
-                      <div class="font-semibold text-night" [class.line-through]="r.isEliminated">{{ r.name }}</div>
+                  <span class="text-xl shrink-0" [class.grayscale]="r.isEliminated">{{ r.flagEmoji }}</span>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span class="font-semibold text-night" [class.line-through]="r.isEliminated">{{ r.name }}</span>
+                      <span class="sm:hidden inline-block bg-slate-200 text-slate-700 rounded px-1.5 text-[10px] font-bold">{{ r.groupLetter }}</span>
                       <span *ngIf="r.isEliminated" class="text-[10px] bg-rose-100 text-rose-600 px-1 rounded font-bold uppercase tracking-tighter">Eliminado</span>
                     </div>
                     <div class="text-xs text-slate-400">{{ r.confederation }}</div>
+                    <!-- Forma reciente: visible en móvil (la columna dedicada se oculta) -->
+                    <div class="mt-1 md:hidden">
+                      <app-form-badges [matches]="r.lastFive"></app-form-badges>
+                    </div>
                   </div>
                 </div>
               </td>
-              <td class="px-3 py-3 text-center">
+              <td class="px-3 py-3 text-center hidden sm:table-cell">
                 <span class="inline-block bg-slate-200 text-slate-700 rounded px-2 py-0.5 text-xs font-bold">
                   {{ r.groupLetter }}
                 </span>
               </td>
-              <td class="px-3 py-3 text-center">
+              <td class="px-2 sm:px-3 py-3 text-center">
                 <div class="font-bold text-night">{{ r.finalScore | number:'1.1-1' }}</div>
-                <div class="w-24 mx-auto bg-slate-200 rounded-full h-1.5 mt-1">
+                <div class="w-16 sm:w-24 mx-auto bg-slate-200 rounded-full h-1.5 mt-1">
                   <div class="bg-emerald-500 h-1.5 rounded-full"
                        [style.width.%]="r.finalScore"></div>
                 </div>
               </td>
-              <td class="px-3 py-3 text-center font-semibold text-emerald-700">
+              <td class="px-2 sm:px-3 py-3 text-center font-semibold text-emerald-700 whitespace-nowrap">
                 {{ r.winProbability | number:'1.1-1' }}%
               </td>
-              <td class="px-3 py-3">
+              <td class="px-3 py-3 hidden md:table-cell">
                 <app-form-badges [matches]="r.lastFive"></app-form-badges>
               </td>
             </tr>
