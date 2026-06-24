@@ -116,8 +116,23 @@ Calendario y resultados reales sincronizados de la Copa Mundial 2026.
 | raw_response | TEXT/JSON | Respuesta original para auditoría |
 | created_at / updated_at | TIMESTAMP | |
 
+### `world_cup_prediction`
+Predicción por partido (endpoint `/predictions` de API-Football), persistida DB-first.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| id | UUID PK | |
+| api_fixture_id | INT UNIQUE | Correlación con `world_cup_fixture.api_fixture_id` |
+| percent_home / percent_draw / percent_away | INT | % crudos de la API |
+| win_home / win_away | NUMERIC(6,3) | **Prob. de avanzar**: el % de empate se redistribuye proporcionalmente (en knockout no hay empate) |
+| advice | TEXT | Consejo textual de la API |
+| winner_name / winner_comment | VARCHAR/TEXT | Favorito sugerido |
+| raw_response | TEXT/JSON | Respuesta original para auditoría |
+| created_at / updated_at | TIMESTAMP | |
+
 ## Relaciones
 - `matches` y `fixtures` referencian `teams` (home/away).
 - `team_scores` referencia `teams` (1 equipo → N snapshots).
 - `scoring_config` independiente; la fila activa rige el cálculo.
 - `world_cup_fixture` referencia `world_cup_team`.
+- `world_cup_prediction` se correlaciona con `world_cup_fixture` por `api_fixture_id`.

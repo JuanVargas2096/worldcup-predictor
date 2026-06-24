@@ -185,6 +185,20 @@ escritos para levantarse con `docker compose up --build`.
   sin % ni errores (consistente con el MVP).
 - Riesgo a validar con datos reales: correlación orden-API ↔ orden-bracket en `KnockoutBracket`.
 
+### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
+- Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
+  `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).
+- Causa: `import_matches.sh` inserta equipos RIVALES externos con `code = UPPER(LEFT(nombre,3))` y dedupe
+  solo por `api_id`; el código NO es único entre externos y los 48 reales.
+- Fix: nueva migración **`V7_9__drop_teams_code_unique.sql`** → `ALTER TABLE teams DROP CONSTRAINT IF EXISTS
+  teams_code_key`. Versión fraccionaria a propósito: con `out-of-order=true` se aplica ANTES de V8 (tanto en
+  BD existentes con V8 pendiente como en instalaciones nuevas, justo tras V7). NO se tocó V8 (no está en el
+  árbol, se genera con la API key).
+- Seguro: externos se referencian por `api_id`/`id` (no por código); `Team.findByCode` usa `firstResult()`
+  (tolera duplicados); unicidad de los 48 reales se mantiene por datos (V2) y por app (TeamResource).
+- **Acción requerida**: reconstruir la imagen del backend (la migración va dentro del jar), no solo reiniciar:
+  `docker compose up --build` (o rebuild + up). Verificado: `BUILD SUCCESS`, V7_9 empaquetada en el jar.
+
 ### Notas / pendientes derivados
 - La forma reciente del predictor (`matches`) sigue siendo mock salvo que se pulse
   "Importar partidos" o se ponga `DATA_PROVIDER=external`. El `ExternalApiFootballDataProvider`

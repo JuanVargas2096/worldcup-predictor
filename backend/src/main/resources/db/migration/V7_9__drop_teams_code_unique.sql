@@ -1,0 +1,13 @@
+-- Quita la unicidad de teams.code.
+--
+-- Motivo: V8__seed_matches.sql (generado por import_matches.sh) inserta equipos RIVALES externos
+-- derivando el código como UPPER(LEFT(nombre,3)). Eso produce colisiones con los 48 equipos reales
+-- (p. ej. "Belarus" -> 'BEL' choca con Bélgica) y rompe el arranque por la constraint teams_code_key.
+--
+-- Es seguro: los equipos externos se referencian por api_id/id (no por código), Team.findByCode usa
+-- firstResult() (tolera duplicados) y la unicidad de los 48 equipos reales se mantiene a nivel de datos
+-- (V2 siembra códigos distintos) y a nivel de app (TeamResource valida duplicados al crear).
+--
+-- Versión fraccionaria V7.9 a propósito: con flyway.out-of-order=true se aplica ANTES de V8 (tanto en
+-- BD existentes donde V8 está pendiente como en instalaciones nuevas, justo después de V7).
+ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_code_key;
