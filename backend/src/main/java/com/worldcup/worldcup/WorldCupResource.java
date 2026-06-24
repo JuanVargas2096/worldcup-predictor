@@ -25,7 +25,11 @@ public class WorldCupResource {
     @Inject
     WorldCupPredictionService predictionService;
 
-    /** Sincronización manual (hace HTTP a la API; acción administrativa puntual). */
+    /**
+     * Sincronización manual (hace HTTP a la API; acción administrativa puntual). Tras sincronizar
+     * los fixtures, refresca las predicciones de los partidos de eliminatoria ya definidos de esa
+     * temporada (igual que el scheduler), para que el botón "Sincronizar ahora" deje todo listo.
+     */
     @POST
     @Path("/sync")
     public SyncResult manualSync(
@@ -33,7 +37,9 @@ public class WorldCupResource {
             @QueryParam("season") Integer season) {
         int l = (league != null) ? league : 1;
         int s = (season != null) ? season : 2026;
-        return syncService.syncWorldCup(l, s);
+        SyncResult result = syncService.syncWorldCup(l, s);
+        predictionService.refreshPredictions(s);
+        return result;
     }
 
     /**

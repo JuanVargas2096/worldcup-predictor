@@ -185,6 +185,21 @@ escritos para levantarse con `docker compose up --build`.
   sin % ni errores (consistente con el MVP).
 - Riesgo a validar con datos reales: correlación orden-API ↔ orden-bracket en `KnockoutBracket`.
 
+### Sesión 2026-06-24 (parte 10 — selector de Mundial 2022/2026 en /#/mundial)
+- [x] **Selector de temporada** en `live.component`: segmented control "Mundial 2026 / Mundial 2022".
+      `season` (default 2026) + `selectSeason(s)` que recarga fixtures + bracket de esa temporada.
+      Título e intro dinámicos; `load/loadBracket/sync` usan `this.season`.
+- [x] **Sync por temporada**: el botón "Sincronizar ahora" ahora sincroniza la temporada seleccionada
+      (`syncWorldCup(1, this.season)`). El modelo ya era multi-temporada (columna `season` en
+      `world_cup_fixture`; endpoints `/fixtures` y `/bracket` aceptan `season`).
+- [x] **Backend**: `WorldCupResource.manualSync` ahora también llama `refreshPredictions(s)` tras
+      sincronizar (igual que el scheduler) → el botón deja fixtures + predicciones listos en un paso.
+- [x] Verificado: `ng build` OK y backend `BUILD SUCCESS`.
+- Notas: el Mundial 2022 (32 equipos) arranca el knockout en **Octavos (Round of 16)**, sin 16avos;
+  `KnockoutBracket` lo maneja. Las predicciones de /predictions para torneos antiguos (2022) PUEDEN venir
+  vacías desde la API; en ese caso el bracket muestra resultados reales + posibles rivales, pero sin barras %.
+- Pendiente de despliegue + verificación con datos reales (ver abajo).
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).

@@ -15,15 +15,27 @@ interface RoundGroup {
   template: `
     <section>
       <div class="flex items-start justify-between mb-1 gap-3 flex-wrap">
-        <h1 class="text-xl sm:text-2xl font-bold text-night">Mundial 2026 · Partidos reales</h1>
+        <h1 class="text-xl sm:text-2xl font-bold text-night">Mundial {{ season }} · Partidos reales</h1>
         <button (click)="sync()" [disabled]="syncing"
                 class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap">
           {{ syncing ? 'Sincronizando…' : '↻ Sincronizar ahora' }}
         </button>
       </div>
+
+      <!-- Selector de Mundial -->
+      <div class="inline-flex rounded-lg bg-slate-200 p-0.5 mb-3">
+        <button *ngFor="let s of seasons" (click)="selectSeason(s)" [disabled]="syncing"
+                class="px-3 sm:px-4 py-1.5 rounded-md text-sm font-semibold transition disabled:opacity-50"
+                [class.bg-white]="s === season" [class.shadow]="s === season"
+                [class.text-night]="s === season" [class.text-slate-500]="s !== season">
+          Mundial {{ s }}
+        </button>
+      </div>
+
       <p class="text-xs sm:text-sm text-slate-500 mb-4">
-        Resultados y calendario reales sincronizados desde API-Football
-        (se actualizan automáticamente hasta 6 veces al día). Se muestran los más recientes primero.
+        Resultados y calendario reales sincronizados desde API-Football.
+        El Mundial 2026 se actualiza automáticamente; para el 2022 pulsa
+        <strong>Sincronizar ahora</strong>. Se muestran los más recientes primero.
       </p>
 
       <div *ngIf="message" class="px-4 py-3 rounded mb-4 text-sm"
@@ -149,6 +161,8 @@ interface RoundGroup {
   `
 })
 export class LiveComponent implements OnInit {
+  readonly seasons = [2026, 2022];
+  season = 2026;
   fixtures: WorldCupFixtureItem[] = [];
   rounds: RoundGroup[] = [];
   bracket: BracketRound[] = [];
@@ -164,9 +178,22 @@ export class LiveComponent implements OnInit {
     this.loadBracket();
   }
 
+  /** Cambia el Mundial mostrado y recarga partidos + bracket de esa temporada. */
+  selectSeason(s: number): void {
+    if (s === this.season || this.syncing) return;
+    this.season = s;
+    this.message = '';
+    this.isError = false;
+    this.fixtures = [];
+    this.rounds = [];
+    this.bracket = [];
+    this.load();
+    this.loadBracket();
+  }
+
   load(): void {
     this.loading = true;
-    this.api.getWorldCupFixtures(2026).subscribe({
+    this.api.getWorldCupFixtures(this.season).subscribe({
       next: (data) => {
         this.fixtures = data;
         this.rounds = this.groupByRound(data);
@@ -182,7 +209,7 @@ export class LiveComponent implements OnInit {
 
   /** Bracket de eliminatorias con predicciones (no bloquea la lista de partidos si falla). */
   loadBracket(): void {
-    this.api.getWorldCupBracket(2026).subscribe({
+    this.api.getWorldCupBracket(this.season).subscribe({
       next: (data) => (this.bracket = data),
       error: () => (this.bracket = [])
     });
@@ -195,12 +222,12 @@ export class LiveComponent implements OnInit {
   sync(): void {
     this.syncing = true;
     this.message = '';
-    this.api.syncWorldCup().subscribe({
+    this.api.syncWorldCup(1, this.season).subscribe({
       next: (res) => {
         this.isError = res.status?.startsWith('ERROR') ?? false;
         this.message = this.isError
           ? `Sincronización con problemas: ${res.status}`
-          : `Sincronizado: ${res.fixturesInserted} nuevos, ${res.fixturesUpdated} actualizados.`;
+          : `Mundial ${this.season} sincronizado: ${res.fixturesInserted} nuevos, ${res.fixturesUpdated} actualizados.`;
         this.syncing = false;
         this.load();
         this.loadBracket();
