@@ -54,6 +54,10 @@ services:
       context: ./frontend
     networks:
       - ranger
+    environment:
+      LETSENCRYPT_HOST: ${PUBLIC_HOST:-worldcup-predictions.mrvargas.net}
+      VIRTUAL_HOST: ${PUBLIC_HOST:-worldcup-predictions.mrvargas.net}
+      VIRTUAL_PORT: "80"
     container_name: worldcup-frontend
     restart: unless-stopped
     expose:
