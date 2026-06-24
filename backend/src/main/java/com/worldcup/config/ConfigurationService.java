@@ -70,6 +70,15 @@ public class ConfigurationService {
         return val != null ? Integer.parseInt(val) : defaultValue;
     }
 
+    /**
+     * Intervalo mínimo (ms) entre llamadas a la API externa, para no exceder el límite por minuto.
+     * Default 6500 ms (~9 req/min, seguro para la capa gratuita de 10/min). Configurable en BD.
+     */
+    @Transactional
+    public int getApiMinIntervalMs() {
+        return getIntValue("API_MIN_INTERVAL_MS", 6500);
+    }
+
     @Transactional
     public void setValue(String code, String value) {
         Configuration config = Configuration.findByCode(code);

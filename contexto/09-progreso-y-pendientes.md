@@ -248,6 +248,22 @@ escritos para levantarse con `docker compose up --build`.
 - Nota: `application.properties` mantiene `football.api.key=${FOOTBALL_API_KEY:NO_KEY}` solo como bootstrap;
   comentario actualizado. La key real nunca se commitea.
 
+### Sesión 2026-06-24 (parte 14 — rate limit de API-Football: 429 "Too many requests")
+- Síntoma: tras llamar al force-refresh (`POST /api/matches/import` → `refreshRecentMatches(true)`), las
+  últimas peticiones devolvían 429/412 ("Too many requests").
+- Causa: el force dispara ~48 llamadas seguidas (1 por equipo) SIN throttle → revienta el límite por
+  minuto de API-Football (capa gratuita: 10/min, 100/día). El guard de cuota era solo diario, no por minuto.
+- Fix: nuevo util `config/ApiRateLimit` (`throttle(ms)`, `isRateLimited(Throwable)` [429/412/mensaje],
+  `isRateLimitErrors(errors)` [200 con bloque errors de cuota]). Se aplicó a los DOS bucles que llaman a la
+  API: `ExternalApiFootballDataProvider.refreshRecentMatches` y `WorldCupPredictionService.refreshPredictions`:
+  - Espaciado entre llamadas (`ApiRateLimit.throttle`) con intervalo configurable
+    `ConfigurationService.getApiMinIntervalMs()` (config `API_MIN_INTERVAL_MS`, default 6500 ms ≈ 9/min).
+  - Si se detecta rate-limit (excepción 429/412 o errors de cuota) → se DETIENE el bucle limpiamente
+    (no martillea); el scheduler reanuda en el siguiente ciclo. El guard diario `canMakeApiCall()` sigue.
+- Verificado: backend `BUILD SUCCESS`.
+- Inmediato para el usuario: si fue límite por MINUTO, esperar ~60 s; si fue DIARIO (100/día), esperar al
+  reset (medianoche UTC). El throttle evita que vuelva a pasar. Tunear `API_MIN_INTERVAL_MS` según el plan.
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).

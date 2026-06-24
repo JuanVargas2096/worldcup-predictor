@@ -1,6 +1,7 @@
 package com.worldcup.worldcup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.worldcup.config.ApiRateLimit;
 import com.worldcup.config.ConfigurationService;
 import com.worldcup.provider.ApiFootballClient;
 import com.worldcup.provider.dto.ApiFootballResponse;
@@ -70,16 +71,28 @@ public class WorldCupPredictionService {
             return 0;
         }
 
+        long intervalMs = configurationService.getApiMinIntervalMs();
         int updated = 0;
+        int calls = 0;
         for (Integer fixtureId : fixtureIds) {
             if (!configurationService.canMakeApiCall()) {
                 LOG.warnf("Cuota diaria de API agotada; se detiene el refresco de predicciones (pendientes: %d).",
                         fixtureIds.size() - updated);
                 break;
             }
+            // Throttle: espacia las llamadas (salvo la primera) para no exceder el límite por minuto.
+            if (calls > 0) {
+                ApiRateLimit.throttle(intervalMs);
+            }
             try {
                 ApiFootballResponse<ApiPrediction> resp = apiClient.getPredictions(apiKey, fixtureId);
                 configurationService.registerApiCall();
+                calls++;
+                if (resp != null && ApiRateLimit.isRateLimitErrors(resp.errors())) {
+                    LOG.warnf("Rate limit/cuota de la API alcanzada (errors=%s). Deteniendo el refresco.",
+                            resp.errors());
+                    break;
+                }
                 if (resp == null || resp.response() == null || resp.response().isEmpty()) {
                     LOG.debugf("Sin predicción para el fixture %d.", fixtureId);
                     continue;
@@ -88,6 +101,11 @@ public class WorldCupPredictionService {
                 QuarkusTransaction.requiringNew().run(() -> persistPrediction(fixtureId, prediction));
                 updated++;
             } catch (Exception e) {
+                if (ApiRateLimit.isRateLimited(e)) {
+                    LOG.warnf("Rate limit de la API alcanzado (%s). Deteniendo el refresco; se reanudará luego.",
+                            e.getMessage());
+                    break;
+                }
                 LOG.errorf("Error obteniendo predicción del fixture %d: %s", fixtureId, e.getMessage());
             }
         }

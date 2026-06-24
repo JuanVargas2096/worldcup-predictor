@@ -1,5 +1,6 @@
 package com.worldcup.provider;
 
+import com.worldcup.config.ApiRateLimit;
 import com.worldcup.config.ConfigurationService;
 import com.worldcup.match.MatchResult;
 import com.worldcup.provider.dto.ApiFixture;
@@ -72,7 +73,11 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                         .map(t -> new TeamRef(t.id, t.apiId, t.code))
                         .toList());
 
+        // Intervalo entre llamadas para no exceder el límite por minuto de la API (evita 429).
+        long intervalMs = configService.getApiMinIntervalMs();
+
         int totalImported = 0;
+        int calls = 0;
         for (TeamRef ref : teams) {
             if (ref.apiId() == null) {
                 continue;
@@ -91,6 +96,11 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 break;
             }
 
+            // Throttle: espacia las llamadas (salvo la primera) para respetar el límite por minuto.
+            if (calls > 0) {
+                ApiRateLimit.throttle(intervalMs);
+            }
+
             try {
                 log.infof("Consultando últimos partidos de %s (apiId %d)...", ref.code(), ref.apiId());
                 // 2) Llamada HTTP SIN transacción abierta. 'last' trae los partidos más
@@ -98,6 +108,14 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 ApiFootballResponse<ApiFixture> response =
                         apiClient.getFixtures(apiKey, null, null, ref.apiId(), FETCH_LAST, null);
                 configService.registerApiCall();
+                calls++;
+
+                // La API devuelve 200 con un bloque errors cuando se agota la cuota diaria.
+                if (response != null && ApiRateLimit.isRateLimitErrors(response.errors())) {
+                    log.warnf("Rate limit/cuota de la API alcanzada (errors=%s). Deteniendo importación.",
+                            response.errors());
+                    break;
+                }
 
                 if (response == null || response.response() == null || response.response().isEmpty()) {
                     log.warnf("Sin partidos recientes para %s.", ref.code());
@@ -119,6 +137,11 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 int imported = QuarkusTransaction.requiringNew().call(() -> replaceTeamMatches(ref.id(), recent));
                 totalImported += imported;
             } catch (Exception e) {
+                if (ApiRateLimit.isRateLimited(e)) {
+                    log.warnf("Rate limit de la API alcanzado (%s). Deteniendo importación; se reanudará luego.",
+                            e.getMessage());
+                    break;
+                }
                 log.errorf("Error importando partidos para %s: %s", ref.code(), e.getMessage());
             }
         }
