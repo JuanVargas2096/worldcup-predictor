@@ -16,7 +16,7 @@ public class RankingScheduler {
     ScoringService scoringService;
 
     // Todos los días a las 06:00. Configurable vía cron si se requiere.
-    @Scheduled(cron = "0 0 6 * * ?")
+    @Scheduled(cron = "0 */15 * * * ?")
     void recalculateDaily() {
         LOG.info("Scheduler: recalculando ranking diario...");
         int n = scoringService.recalculateAll();
