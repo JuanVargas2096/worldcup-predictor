@@ -48,6 +48,9 @@ public class Team extends PanacheEntityBase {
     @Column(name = "api_id")
     public Integer apiId;
 
+    @Column(name = "is_eliminated")
+    public Boolean isEliminated = false;
+
     @Column(name = "created_at")
     public LocalDateTime createdAt = LocalDateTime.now();
 

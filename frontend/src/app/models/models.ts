@@ -27,6 +27,7 @@ export interface RankingEntry {
   eloScore: number;
   lastFive: MatchSummary[];
   explanation: string;
+  isEliminated: boolean;
 }
 
 export interface ScoreHistoryPoint {
@@ -79,6 +80,7 @@ export interface Team {
   groupLetter: string;
   pot: number;
   flagEmoji: string;
+  isEliminated: boolean;
 }
 
 export interface GroupView {

@@ -21,5 +21,6 @@ public record RankingEntryDto(
         BigDecimal previousWorldCupScore,
         BigDecimal eloScore,
         List<MatchSummaryDto> lastFive,
-        String explanation
+        String explanation,
+        boolean isEliminated
 ) {}

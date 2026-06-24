@@ -37,12 +37,9 @@ public class ConfigurationService {
     @Transactional
     public boolean canMakeApiCall() {
         String lastCallDateStr = getValue("LAST_API_CALL_DATE");
-        log.info("lastCallDateStr: [{}]", lastCallDateStr);
         LocalDate lastCallDate = lastCallDateStr != null ? LocalDate.parse(lastCallDateStr) : LocalDate.MIN;
         LocalDate today = LocalDate.now();
 
-        log.info("[{}];[{}]", lastCallDate, today);
-        log.info("las fechas, son iguales?: [{}]", today.equals(lastCallDate));
         if (!today.equals(lastCallDate)) {
             setValue("API_CALLS_TODAY", "0");
             setValue("LAST_API_CALL_DATE", today.toString());
@@ -51,8 +48,6 @@ public class ConfigurationService {
         int callsToday = getIntValue("API_CALLS_TODAY", 0);
         int maxCalls = getIntValue("MAX_API_CALLS_PER_DAY", 100);
 
-        log.info("datos de comparación: [{};{}]", callsToday, maxCalls);
-        log.info("puede hacer la llamada?: [{}]", callsToday < maxCalls);
         return callsToday < maxCalls;
     }
 

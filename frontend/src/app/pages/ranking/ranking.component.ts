@@ -47,14 +47,18 @@ import { FormBadgesComponent } from '../../components/form-badges.component';
           <tbody>
             <tr *ngFor="let r of rankings"
                 [routerLink]="['/equipo', r.teamId]"
-                class="border-t border-slate-100 hover:bg-emerald-50 cursor-pointer">
+                class="border-t border-slate-100 hover:bg-emerald-50 cursor-pointer"
+                [class.opacity-50]="r.isEliminated">
               <td class="px-3 py-3 font-bold"
-                  [class.text-amber-500]="r.position <= 3">{{ r.position }}</td>
+                  [class.text-amber-500]="r.position <= 3 && !r.isEliminated">{{ r.position }}</td>
               <td class="px-3 py-3">
                 <div class="flex items-center gap-2">
-                  <span class="text-xl">{{ r.flagEmoji }}</span>
+                  <span class="text-xl" [class.grayscale]="r.isEliminated">{{ r.flagEmoji }}</span>
                   <div>
-                    <div class="font-semibold text-night">{{ r.name }}</div>
+                    <div class="flex items-center gap-1">
+                      <div class="font-semibold text-night" [class.line-through]="r.isEliminated">{{ r.name }}</div>
+                      <span *ngIf="r.isEliminated" class="text-[10px] bg-rose-100 text-rose-600 px-1 rounded font-bold uppercase tracking-tighter">Eliminado</span>
+                    </div>
                     <div class="text-xs text-slate-400">{{ r.confederation }}</div>
                   </div>
                 </div>

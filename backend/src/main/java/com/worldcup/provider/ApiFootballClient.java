@@ -15,6 +15,8 @@ public interface ApiFootballClient {
     @Path("/fixtures")
     ApiFootballResponse<ApiFixture> getFixtures(
             @HeaderParam("x-apisports-key") String apiKey,
+            @QueryParam("league") Integer leagueId,
+            @QueryParam("season") Integer season,
             @QueryParam("team") Integer teamId,
             @QueryParam("last") Integer last,
             @QueryParam("status") String status

@@ -33,26 +33,37 @@ public class DataInitializer {
     @ConfigProperty(name = "worldcup.recalculate-on-start", defaultValue = "true")
     boolean recalculateOnStart;
 
-    @Transactional
     void onStart(@Observes StartupEvent ev) {
         LOG.info("== Inicializando datos del World Cup Predictor ==");
 
-        int fixtures = fixtureGenerator.generateIfEmpty();
-        LOG.infof("Fixtures generados: %d", fixtures);
+        try {
+            int fixtures = fixtureGenerator.generateIfEmpty();
+            LOG.infof("Fixtures generados: %d", fixtures);
+        } catch (Exception e) {
+            LOG.error("Error generando fixtures iniciales: " + e.getMessage());
+        }
 
         // FILOSOFÍA DE TOKENS: Importación bajo demanda o inicial. 
         // Solo intentamos refrescar si hay pocos o ningún partido, 
         // para no agotar la cuota de la API externa innecesariamente.
-        long matchesInDb = MatchResult.count();
-        if (matchesInDb < 48) { 
-            LOG.info("Pocos partidos en BD. Iniciando importación de forma reciente...");
-            int imported = dataProvider.refreshRecentMatches();
-            LOG.infof("Partidos recientes importados (%s): %d", dataProvider.name(), imported);
+        try {
+            long matchesInDb = MatchResult.count();
+            if (matchesInDb < 48) { 
+                LOG.info("Pocos partidos en BD. Iniciando importación de forma reciente...");
+                int imported = dataProvider.refreshRecentMatches();
+                LOG.infof("Partidos recientes importados (%s): %d", dataProvider.name(), imported);
+            }
+        } catch (Exception e) {
+            LOG.error("Error durante la importación inicial de partidos: " + e.getMessage());
         }
 
         if (recalculateOnStart) {
-            int n = scoringService.recalculateAll();
-            LOG.infof("Ranking inicial calculado para %d equipos.", n);
+            try {
+                int n = scoringService.recalculateAll();
+                LOG.infof("Ranking inicial calculado para %d equipos.", n);
+            } catch (Exception e) {
+                LOG.error("Error calculando ranking inicial: " + e.getMessage());
+            }
         }
 
         LOG.info("== Inicialización completada ==");

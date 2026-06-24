@@ -51,9 +51,12 @@ public class MatchResult extends PanacheEntityBase {
     @Column(name = "created_at")
     public LocalDateTime createdAt = LocalDateTime.now();
 
-    /** Últimos N partidos de un equipo (como local o visitante), por fecha desc. */
+    /** Últimos N partidos de un equipo (como local o visitante), por fecha desc. 
+     *  Usa join fetch para evitar N+1 al obtener los nombres de los equipos. */
     public static List<MatchResult> lastMatchesForTeam(UUID teamId, int limit) {
-        return find("homeTeam.id = ?1 or awayTeam.id = ?1 order by matchDate desc", teamId)
+        return find("from MatchResult m join fetch m.homeTeam join fetch m.awayTeam " +
+                    "where m.homeTeam.id = ?1 or m.awayTeam.id = ?1 " +
+                    "order by m.matchDate desc", teamId)
                 .page(0, limit)
                 .list();
     }

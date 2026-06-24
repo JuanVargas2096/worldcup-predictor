@@ -22,7 +22,9 @@ escritos para levantarse con `docker compose up --build`.
 - [x] Frontend Angular SPA: páginas Ranking, Detalle, Fixture, Configuración.
 - [x] Gráfico de Evolución del Score funcional con historial persistente y etiquetas de tiempo.
 - [x] Soporte para partidos contra equipos externos (no clasificados) para el cálculo de forma.
+- [x] Gestión de equipos eliminados (isEliminated flag) con probabilidad de victoria 0%.
 - [x] Filosofía "DB-First" para ahorro de tokens de API y procesamiento, con persistencia obligatoria.
+- [x] Script de bash para importación offline y generación de semillas SQL.
 - [x] Dockerfiles + docker-compose.yml + README.
 
 ## Pendiente / Próximos pasos (TODO)

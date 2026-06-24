@@ -22,8 +22,22 @@ public class RankingService {
     }
 
     public RankingEntryDto entryForTeam(UUID teamId) {
-        List<RankingEntryDto> all = ranking();
-        return all.stream().filter(e -> e.teamId().equals(teamId)).findFirst().orElse(null);
+        TeamScore latest = TeamScore.latestForTeam(teamId);
+        if (latest == null) return null;
+
+        // Para saber la posición, obtenemos el ranking actual (solo los objetos TeamScore)
+        // evitando llamar a ranking() que mapea todos a DTO con sus subconsultas de partidos.
+        List<TeamScore> currentRanking = TeamScore.latestRanking();
+        int position = 0;
+        for (int i = 0; i < currentRanking.size(); i++) {
+            if (currentRanking.get(i).id.equals(latest.id)) {
+                position = i + 1;
+                break;
+            }
+        }
+
+        if (position == 0) return null;
+        return toEntry(position, latest);
     }
 
     public TeamDetailDto detailForTeam(UUID teamId) {
@@ -55,6 +69,7 @@ public class RankingService {
                 ts.finalScore, ts.winProbability,
                 ts.formScore, ts.goalDiffScore, ts.opponentStrengthScore,
                 ts.previousWorldCupScore, ts.eloScore,
-                lastFive, ts.explanation);
+                lastFive, ts.explanation,
+                Boolean.TRUE.equals(team.isEliminated));
     }
 }

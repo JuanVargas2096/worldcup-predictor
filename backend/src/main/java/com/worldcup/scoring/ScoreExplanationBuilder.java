@@ -8,6 +8,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class ScoreExplanationBuilder {
 
     public String build(Team team, FormStats stats, TeamScore score) {
+        if (Boolean.TRUE.equals(team.isEliminated)) {
+            return team.name + " ha sido eliminado del Mundial. Su probabilidad de victoria es 0%.";
+        }
         StringBuilder sb = new StringBuilder();
         sb.append(team.name)
           .append(" obtiene ").append(score.finalScore.doubleValue())

@@ -73,6 +73,12 @@ prob_i = peso_i / sum(peso_j)  * 100
 ```
 Suma 100% sobre las 48 selecciones. T controla cuán "plano" es el reparto.
 
+## Equipos Eliminados
+Si un equipo es marcado como `is_eliminated = true`:
+1. Su probabilidad de ganar el Mundial se fija automáticamente en **0.0%**.
+2. Su peso en el cálculo de `softmax` para el resto de equipos es **0**, lo que redistribuye su probabilidad previa entre los equipos que siguen en competición.
+3. El `final_score` se mantiene para fines estadísticos y de historial, pero se muestra visualmente tachado en la interfaz.
+
 ## Fuente de datos y Persistencia
 El modelo es **Offline-First**. No realiza consultas a APIs externas durante el cálculo.
 1. Los partidos recientes se importan una única vez y se persisten en la tabla `match_results`.

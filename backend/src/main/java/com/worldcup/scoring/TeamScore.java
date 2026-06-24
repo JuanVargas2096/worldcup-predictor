@@ -55,10 +55,12 @@ public class TeamScore extends PanacheEntityBase {
     @Column(columnDefinition = "text")
     public String explanation;
 
-    /** Último snapshot de cada equipo (vigente), ordenado por score desc. */
+    /** Último snapshot de cada equipo (vigente), ordenado por score desc. 
+     *  Usa join fetch para evitar N+1 al obtener datos de los equipos. */
     public static List<TeamScore> latestRanking() {
         return getEntityManager().createQuery("""
                 select ts from TeamScore ts
+                join fetch ts.team
                 where ts.calculatedAt = (
                     select max(ts2.calculatedAt) from TeamScore ts2 where ts2.team = ts.team
                 )

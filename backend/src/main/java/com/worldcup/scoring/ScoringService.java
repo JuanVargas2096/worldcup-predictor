@@ -142,9 +142,14 @@ public class ScoringService {
         double sum = 0;
         double[] weights = new double[snapshots.size()];
         for (int i = 0; i < snapshots.size(); i++) {
-            double s = snapshots.get(i).finalScore.doubleValue();
-            weights[i] = Math.exp(s / SOFTMAX_TEMPERATURE);
-            sum += weights[i];
+            TeamScore score = snapshots.get(i);
+            if (Boolean.TRUE.equals(score.team.isEliminated)) {
+                weights[i] = 0;
+            } else {
+                double s = score.finalScore.doubleValue();
+                weights[i] = Math.exp(s / SOFTMAX_TEMPERATURE);
+                sum += weights[i];
+            }
         }
         for (int i = 0; i < snapshots.size(); i++) {
             double prob = sum == 0 ? 0 : weights[i] / sum * 100.0;

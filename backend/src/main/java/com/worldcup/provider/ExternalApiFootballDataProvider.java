@@ -14,6 +14,7 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -78,23 +79,35 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 break;
             }
 
-            // Buscamos los últimos 5 partidos de cada selección.
-            // El parámetro 'last' ya implica que son partidos terminados.
+            // Buscamos partidos de la temporada 2024 (compatible con plan gratuito)
+            // Filtramos los últimos 5 localmente para evitar la restricción del parámetro 'last'
             try {
+                log.infof("Consultando partidos para %s (apiId: %d)...", team.code, team.apiId);
                 ApiFootballResponse<ApiFixture> response = apiClient.getFixtures(
-                        apiKey.get(), team.apiId, 5, null);
+                        apiKey.get(), null, 2024, team.apiId, null, "FT");
 
                 configService.registerApiCall();
 
-                if (response != null && response.response() != null) {
-                    for (ApiFixture apiMatch : response.response()) {
-                        if (persistIfMissing(apiMatch)) {
+                if (response != null && response.response() != null && !response.response().isEmpty()) {
+                    List<ApiFixture> matches = response.response();
+                    // Ordenar por fecha descendente
+                    matches.sort((a, b) -> b.fixture().date().compareTo(a.fixture().date()));
+                    
+                    log.infof("API devolvió %d partidos para %s. Procesando los 5 más recientes.", matches.size(), team.code);
+                    int importedForTeam = 0;
+                    for (int i = 0; i < Math.min(5, matches.size()); i++) {
+                        if (persistIfMissing(matches.get(i))) {
+                            importedForTeam++;
                             totalImported++;
                         }
                     }
+                } else if (response != null && response.errors() != null && !response.errors().toString().equals("[]") && !response.errors().toString().equals("{}")) {
+                    log.errorf("Error de la API para %s: %s", team.code, response.errors());
+                } else {
+                    log.warnf("No se encontraron partidos finalizados para %s en la temporada 2024.", team.code);
                 }
             } catch (Exception e) {
-                log.errorf("Error importando partidos para %s: %s", team.code, e.getMessage());
+                log.errorf("Error invocando API para %s: %s", team.code, e.getMessage());
             }
         }
 
@@ -109,12 +122,15 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
 
         if (home == null || away == null) return false;
 
-        LocalDate matchDate = ZonedDateTime.parse(api.fixture().date()).toLocalDate();
+        LocalDate matchDate = parseDate(api.fixture().date());
 
         // Evitar duplicados por fecha y equipos
         long count = MatchResult.count("matchDate = ?1 and homeTeam = ?2 and awayTeam = ?3",
                 matchDate, home, away);
-        if (count > 0) return false;
+        if (count > 0) {
+            log.debugf("Partido ya existe: %s vs %s el %s", home.code, away.code, matchDate);
+            return false;
+        }
 
         MatchResult m = new MatchResult();
         m.matchDate = matchDate;
@@ -139,15 +155,25 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 t = new Team();
                 t.apiId = info.id();
                 t.name = info.name();
-                // Generamos un código único basado en el nombre y el ID
+                // Generamos un código único basado en el nombre y el ID (máximo 3 caracteres)
                 String baseCode = (info.name().length() >= 3) 
                     ? info.name().substring(0, 3).toUpperCase() 
                     : (info.name().toUpperCase() + "XX").substring(0, 3);
                 
-                if (Team.findByCode(baseCode) != null) {
-                    baseCode = baseCode.substring(0, 2) + (info.id() % 10);
+                String finalCode = baseCode;
+                int suffix = 0;
+                // Si el código ya existe, buscamos una alternativa usando números de forma incremental
+                while (Team.findByCode(finalCode) != null && suffix < 100) {
+                    if (suffix < 10) {
+                        // Intentamos algo como NO0, NO1...
+                        finalCode = baseCode.substring(0, 2) + suffix;
+                    } else {
+                        // Intentamos algo como N10, N11...
+                        finalCode = baseCode.substring(0, 1) + (suffix % 100);
+                    }
+                    suffix++;
                 }
-                t.code = baseCode;
+                t.code = finalCode;
                 t.flagEmoji = "🏳️"; // Bandera genérica para externos
                 t.persist();
             } else {
@@ -157,5 +183,26 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
             }
         }
         return t;
+    }
+
+    private LocalDate parseDate(String dateStr) {
+        if (dateStr == null) return LocalDate.now();
+        try {
+            // API-Football suele enviar ISO con zona horaria
+            if (dateStr.contains("+") || dateStr.endsWith("Z")) {
+                return ZonedDateTime.parse(dateStr).toLocalDate();
+            }
+            // Fallback para ISO sin zona horaria
+            return LocalDateTime.parse(dateStr).toLocalDate();
+        } catch (Exception e) {
+            log.debugf("Formato de fecha no estándar (%s), intentando extracción básica", dateStr);
+            try {
+                // Si falla, tomamos los primeros 10 caracteres (YYYY-MM-DD)
+                return LocalDate.parse(dateStr.substring(0, 10));
+            } catch (Exception e2) {
+                log.errorf("Imposible parsear fecha: %s", dateStr);
+                return LocalDate.now();
+            }
+        }
     }
 }

@@ -57,8 +57,26 @@ Configuración (deben sumar 100%). Detalle en
 3. **Fixture** (`/fixture`): los 12 grupos (A–L) con equipos y calendario.
 4. **Configuración** (`/configuracion`): editar pesos del modelo.
 
+## 📡 Sincronización de Datos Reales
+
+Para obtener los partidos reales y alimentar el modelo de scoring:
+
+1. **Vía UI**: Ve a la pantalla de **Configuración** y usa el botón **Importar partidos ahora** (requiere configurar `FOOTBALL_API_KEY` en el `docker-compose.yml` o `.env`).
+2. **Vía Script (Recomendado si falla la API en Docker)**:
+   Usa el script de bash incluido para generar una semilla SQL persistente:
+   ```bash
+   ./import_matches.sh TU_API_KEY
+   ```
+   Esto creará un archivo de migración en `backend/src/main/resources/db/migration/V8__seed_matches.sql`. Al reiniciar los contenedores (`docker compose up --build`), los datos se cargarán automáticamente.
+
 ## 📡 Endpoints principales
 
+### Mundial 2026 (Real-time)
+- **POST** `/api/world-cup/sync`: Dispara la sincronización manual.
+- **GET** `/api/world-cup/fixtures`: Consulta partidos reales del mundial.
+  - Filtros: `season`, `teamId`, `status`, `round`, `dateFrom`, `dateTo`.
+
+### Predictor & Ranking
 ```
 GET  /api/teams                         GET  /api/rankings
 GET  /api/teams/{id}                     GET  /api/rankings/{teamId}
@@ -70,6 +88,13 @@ GET  /api/matches/team/{teamId}/last-five
 POST /api/matches                        GET  /api/fixtures
 POST /api/matches/import                 GET  /api/fixtures/group/{letter}
 ```
+
+## 🏆 Sincronización Copa Mundial 2026
+
+El sistema incluye un proceso automático para obtener resultados y calendarios reales:
+1. **Configuración**: El parámetro `WORLD_CUP_SYNC_RUNS_PER_DAY` en la tabla `app_parameter` define la frecuencia diaria (default: 6).
+2. **Intervalo**: El scheduler calcula `24 / N` horas para evitar saturar la API.
+3. **Persistencia**: Se guardan equipos (`world_cup_team`) y partidos (`world_cup_fixture`) con el JSON original para auditoría.
 
 ## 🛠️ Desarrollo local (sin Docker para la app)
 

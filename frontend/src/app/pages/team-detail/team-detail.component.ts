@@ -27,17 +27,20 @@ Chart.register(...registerables);
 
     <section *ngIf="detail as d" class="mt-3 space-y-6">
       <!-- Cabecera -->
-      <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4 flex-wrap">
-        <span class="text-5xl">{{ d.ranking.flagEmoji }}</span>
+      <div class="bg-white rounded-xl shadow p-5 flex items-center gap-4 flex-wrap" [class.opacity-75]="d.ranking.isEliminated">
+        <span class="text-5xl" [class.grayscale]="d.ranking.isEliminated">{{ d.ranking.flagEmoji }}</span>
         <div class="flex-1">
-          <h1 class="text-2xl font-bold text-night">{{ d.ranking.name }}</h1>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold text-night" [class.line-through]="d.ranking.isEliminated">{{ d.ranking.name }}</h1>
+            <span *ngIf="d.ranking.isEliminated" class="text-xs bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Eliminado</span>
+          </div>
           <p class="text-sm text-slate-500">
             {{ d.ranking.confederation }} · Grupo {{ d.ranking.groupLetter }} ·
             Posición #{{ d.ranking.position }}
           </p>
         </div>
         <div class="text-right">
-          <div class="text-3xl font-bold text-emerald-600">{{ d.ranking.finalScore | number:'1.1-1' }}</div>
+          <div class="text-3xl font-bold text-emerald-600" [class.text-slate-400]="d.ranking.isEliminated">{{ d.ranking.finalScore | number:'1.1-1' }}</div>
           <div class="text-xs text-slate-500">Score · {{ d.ranking.winProbability | number:'1.1-1' }}% título</div>
         </div>
       </div>

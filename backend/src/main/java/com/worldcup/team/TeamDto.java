@@ -13,10 +13,12 @@ public record TeamDto(
         String previousWorldCupResult,
         String groupLetter,
         Integer pot,
-        String flagEmoji
+        String flagEmoji,
+        boolean isEliminated
 ) {
     public static TeamDto from(Team t) {
         return new TeamDto(t.id, t.code, t.name, t.confederation, t.fifaRanking,
-                t.eloRating, t.previousWorldCupResult, t.groupLetter, t.pot, t.flagEmoji);
+                t.eloRating, t.previousWorldCupResult, t.groupLetter, t.pot, t.flagEmoji,
+                Boolean.TRUE.equals(t.isEliminated));
     }
 }
