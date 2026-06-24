@@ -15,7 +15,9 @@ escritos para levantarse con `docker compose up --build`.
 - [x] DTOs + Resources REST (teams, matches, fixtures, rankings, scoring-config).
 - [x] ScoringService + ScoreExplanationBuilder + probabilidad softmax.
 - [x] FootballDataProvider + MockFootballDataProvider (genera forma reciente).
-- [x] ExternalApiFootballDataProvider (stub para datos reales).
+- [x] ExternalApiFootballDataProvider implementado y funcional con API-Football (Corregido error 404, mapeo por api_id y deduplicación).
+- [x] Mapeo completo de IDs oficiales para las 48 selecciones del Mundial 2026.
+- [x] Sistema de configuración dinámica y control de cuota (rate-limiting) para la API.
 - [x] Bootstrap: genera fixtures round-robin por grupo + partidos recientes + recalcula.
 - [x] Frontend Angular SPA: páginas Ranking, Detalle, Fixture, Configuración.
 - [x] Dockerfiles + docker-compose.yml + README.
@@ -23,9 +25,9 @@ escritos para levantarse con `docker compose up --build`.
 ## Pendiente / Próximos pasos (TODO)
 - [x] Verificar build real: actualizado a Java 21 y Angular 19.
 - [x] Cargar fechas/sedes/oficiales reales del calendario (hoy aproximadas).
-- [ ] Implementar `ExternalApiFootballDataProvider` contra una API real
+- [x] Implementar `ExternalApiFootballDataProvider` contra una API real
       (API-Football / Sportmonks / football-data.org) para forma reciente real.
-- [ ] Tests (unit del ScoringService; e2e mínimos).
+- [x] Tests (unit del ScoringService; e2e mínimos).
 - [x] Scheduler diario (RankingScheduler) — implementado.
 - [ ] Persistir fixtures con resultados reales según avanza el torneo.
 

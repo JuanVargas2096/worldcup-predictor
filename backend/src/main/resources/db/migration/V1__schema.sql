@@ -8,7 +8,7 @@ CREATE TABLE teams (
     fifa_ranking INT,
     elo_rating NUMERIC(10,2),
     previous_world_cup_result VARCHAR(30),
-    group_letter CHAR(1),
+    group_letter VARCHAR(1),
     pot INT,
     flag_emoji VARCHAR(10),
     created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -32,7 +32,7 @@ CREATE INDEX idx_matches_date ON matches(match_date DESC);
 
 CREATE TABLE fixtures (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    group_letter CHAR(1) NOT NULL,
+    group_letter VARCHAR(1) NOT NULL,
     matchday INT NOT NULL,
     scheduled_date DATE,
     venue VARCHAR(100),

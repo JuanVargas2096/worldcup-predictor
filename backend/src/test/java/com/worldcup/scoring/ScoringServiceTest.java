@@ -48,4 +48,15 @@ public class ScoringServiceTest {
         t.fifaRanking = 100;
         Assertions.assertEquals(35.0, scoringService.opponentStrengthOf(t));
     }
+
+    @Test
+    public void testComputeFormStats_Empty() {
+        com.worldcup.team.Team t = new com.worldcup.team.Team();
+        t.id = java.util.UUID.randomUUID();
+        
+        FormStats stats = scoringService.computeFormStats(t);
+        Assertions.assertNotNull(stats);
+        Assertions.assertEquals(0, stats.played());
+        Assertions.assertEquals(0.0, stats.opponentStrength());
+    }
 }

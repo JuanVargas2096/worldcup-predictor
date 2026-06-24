@@ -7,7 +7,7 @@ import java.util.List;
 public record ApiFootballResponse<T>(
     String get,
     Object parameters,
-    List<Object> errors,
+    Object errors,
     int results,
     Paging paging,
     List<T> response

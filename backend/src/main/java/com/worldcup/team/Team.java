@@ -45,6 +45,9 @@ public class Team extends PanacheEntityBase {
     @Column(name = "flag_emoji")
     public String flagEmoji;
 
+    @Column(name = "api_id")
+    public Integer apiId;
+
     @Column(name = "created_at")
     public LocalDateTime createdAt = LocalDateTime.now();
 
@@ -53,6 +56,11 @@ public class Team extends PanacheEntityBase {
 
     public static Team findByCode(String code) {
         return find("code", code).firstResult();
+    }
+
+    public static Team findByApiId(Integer apiId) {
+        if (apiId == null) return null;
+        return find("apiId", apiId).firstResult();
     }
 
     public static List<Team> listAllOrdered() {
