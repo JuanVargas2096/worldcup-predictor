@@ -8,6 +8,13 @@ interface RoundGroup {
   fixtures: WorldCupFixtureItem[];
 }
 
+interface BracketColumn {
+  round: string;
+  matches: BracketMatchItem[];
+  pairs: boolean;
+  leadin: boolean;
+}
+
 @Component({
   selector: 'app-live',
   standalone: true,
@@ -53,46 +60,62 @@ interface RoundGroup {
         <p class="text-[11px] text-slate-400 mb-3 sm:hidden">↔ Desliza horizontalmente para ver toda la llave.</p>
 
         <div class="overflow-x-auto pb-3">
-          <div class="flex items-stretch gap-2 sm:gap-3 w-max mx-auto">
+          <div class="bk-row flex items-stretch w-max mx-auto">
 
             <!-- Mitad izquierda: rondas de fuera hacia el centro -->
-            <div *ngFor="let col of leftColumns" class="flex flex-col w-[140px] sm:w-[165px] shrink-0">
-              <div class="h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
-              <div class="flex-1 flex flex-col justify-around gap-2">
-                <ng-container *ngFor="let m of col.matches"
-                              [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+            <div *ngFor="let col of leftColumns"
+                 class="bk-col bk-left flex flex-col w-[140px] sm:w-[160px] shrink-0"
+                 [class.bk-pairs]="col.pairs" [class.bk-single]="!col.pairs" [class.bk-leadin]="col.leadin">
+              <div class="bk-head h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
+              <div class="bk-body flex-1 flex flex-col">
+                <div *ngFor="let m of col.matches; let i = index"
+                     class="bk-m flex items-center"
+                     [class.bk-top]="col.pairs && i % 2 === 0" [class.bk-bottom]="col.pairs && i % 2 === 1">
+                  <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+                </div>
               </div>
             </div>
 
-            <!-- Centro: Final (+ tercer puesto) -->
-            <div *ngIf="finalMatch" class="flex flex-col justify-center w-[160px] sm:w-[185px] shrink-0">
-              <div class="h-6 text-[11px] sm:text-xs uppercase tracking-wide text-amber-600 font-bold text-center mb-1">🏆 Final</div>
-              <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: finalMatch, big: true }"></ng-container>
-              <div *ngIf="champion(finalMatch) as champ" class="mt-2 text-center text-xs font-bold text-amber-600">
-                Campeón: {{ champ }}
-              </div>
-              <div *ngIf="thirdPlace" class="mt-5">
-                <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">3.er puesto</div>
-                <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: thirdPlace }"></ng-container>
+            <!-- Centro: Final -->
+            <div *ngIf="finalMatch" class="bk-col flex flex-col w-[150px] sm:w-[180px] shrink-0">
+              <div class="bk-head h-6 text-[11px] sm:text-xs uppercase tracking-wide text-amber-600 font-bold text-center mb-1">🏆 Final</div>
+              <div class="bk-body flex-1 flex flex-col">
+                <div class="bk-m bk-final flex items-center">
+                  <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: finalMatch, big: true }"></ng-container>
+                </div>
               </div>
             </div>
 
             <!-- Mitad derecha: rondas del centro hacia fuera -->
-            <div *ngFor="let col of rightColumns" class="flex flex-col w-[140px] sm:w-[165px] shrink-0">
-              <div class="h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
-              <div class="flex-1 flex flex-col justify-around gap-2">
-                <ng-container *ngFor="let m of col.matches"
-                              [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+            <div *ngFor="let col of rightColumns"
+                 class="bk-col bk-right flex flex-col w-[140px] sm:w-[160px] shrink-0"
+                 [class.bk-pairs]="col.pairs" [class.bk-single]="!col.pairs" [class.bk-leadin]="col.leadin">
+              <div class="bk-head h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
+              <div class="bk-body flex-1 flex flex-col">
+                <div *ngFor="let m of col.matches; let i = index"
+                     class="bk-m flex items-center"
+                     [class.bk-top]="col.pairs && i % 2 === 0" [class.bk-bottom]="col.pairs && i % 2 === 1">
+                  <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+                </div>
               </div>
             </div>
 
+          </div>
+        </div>
+
+        <!-- Campeón + tercer puesto (debajo, para no descentrar la final) -->
+        <div *ngIf="champion(finalMatch) || thirdPlace" class="mt-4 flex flex-col items-center gap-3">
+          <div *ngIf="champion(finalMatch) as champ" class="text-sm font-bold text-amber-600">🏆 Campeón: {{ champ }}</div>
+          <div *ngIf="thirdPlace" class="w-[180px]">
+            <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">3.er puesto</div>
+            <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: thirdPlace }"></ng-container>
           </div>
         </div>
       </div>
 
       <!-- Plantilla de celda de partido (reutilizada en ambas mitades y la final) -->
       <ng-template #cell let-m="m" let-big="big">
-        <div class="bg-white rounded-lg shadow-sm overflow-hidden" [title]="m.advice || ''"
+        <div class="bk-card w-full bg-white rounded-lg shadow-sm overflow-hidden" [title]="m.advice || ''"
              [class.border-2]="big" [class.border-amber-300]="big"
              [class.border]="!big" [class.border-slate-200]="!big">
           <!-- Local -->
@@ -163,7 +186,46 @@ interface RoundGroup {
         </div>
       </div>
     </section>
-  `
+  `,
+  styles: [`
+    /* Separación fija entre columnas = 2× ancho de cada tramo de conector (1rem). */
+    .bk-row { gap: 2rem; }
+    /* Cada partido ocupa un slot de igual altura → los hermanos quedan centrados respecto
+       al partido de la ronda interior (alineación exacta de los conectores). */
+    .bk-m { position: relative; flex: 1 1 0%; min-height: 3.75rem; }
+
+    /* ---------- IZQUIERDA: conectores hacia la derecha ---------- */
+    .bk-left.bk-pairs .bk-top::after,
+    .bk-left.bk-pairs .bk-bottom::after {
+      content: ''; position: absolute; right: -1rem; width: 1rem; border-right: 2px solid #cbd5e1;
+    }
+    .bk-left.bk-pairs .bk-top::after    { top: 50%;    height: 50%; border-top: 2px solid #cbd5e1; }
+    .bk-left.bk-pairs .bk-bottom::after { bottom: 50%; height: 50%; border-bottom: 2px solid #cbd5e1; }
+    .bk-left.bk-single .bk-m::after {
+      content: ''; position: absolute; right: -1rem; top: 50%; width: 1rem; border-top: 2px solid #cbd5e1;
+    }
+    .bk-left.bk-leadin .bk-m::before {
+      content: ''; position: absolute; left: -1rem; top: 50%; width: 1rem; border-top: 2px solid #cbd5e1;
+    }
+
+    /* ---------- DERECHA: espejo, conectores hacia la izquierda ---------- */
+    .bk-right.bk-pairs .bk-top::before,
+    .bk-right.bk-pairs .bk-bottom::before {
+      content: ''; position: absolute; left: -1rem; width: 1rem; border-left: 2px solid #cbd5e1;
+    }
+    .bk-right.bk-pairs .bk-top::before    { top: 50%;    height: 50%; border-top: 2px solid #cbd5e1; }
+    .bk-right.bk-pairs .bk-bottom::before { bottom: 50%; height: 50%; border-bottom: 2px solid #cbd5e1; }
+    .bk-right.bk-single .bk-m::before {
+      content: ''; position: absolute; left: -1rem; top: 50%; width: 1rem; border-top: 2px solid #cbd5e1;
+    }
+    .bk-right.bk-leadin .bk-m::after {
+      content: ''; position: absolute; right: -1rem; top: 50%; width: 1rem; border-top: 2px solid #cbd5e1;
+    }
+
+    /* ---------- FINAL: recibe un tramo de cada lado ---------- */
+    .bk-final::before { content: ''; position: absolute; left: -1rem;  top: 50%; width: 1rem; border-top: 2px solid #cbd5e1; }
+    .bk-final::after  { content: ''; position: absolute; right: -1rem; top: 50%; width: 1rem; border-top: 2px solid #cbd5e1; }
+  `]
 })
 export class LiveComponent implements OnInit {
   readonly seasons = [2026, 2022];
@@ -172,8 +234,10 @@ export class LiveComponent implements OnInit {
   rounds: RoundGroup[] = [];
   bracket: BracketRound[] = [];
   // Columnas de la llave (bracket de dos lados que converge en la final).
-  leftColumns: { round: string; matches: BracketMatchItem[] }[] = [];
-  rightColumns: { round: string; matches: BracketMatchItem[] }[] = [];
+  // pairs = la columna emparejada dibuja conectores en "Y" hacia la ronda interior (len > 1);
+  // leadin = la columna recibe un conector de su ronda exterior (todas menos la más externa).
+  leftColumns: BracketColumn[] = [];
+  rightColumns: BracketColumn[] = [];
   finalMatch: BracketMatchItem | null = null;
   thirdPlace: BracketMatchItem | null = null;
   loading = true;
@@ -239,14 +303,21 @@ export class LiveComponent implements OnInit {
    */
   private buildBracketColumns(): void {
     const knockout = this.bracket.filter((r) => r.round !== 'Final' && r.round !== 'Tercer puesto');
-    this.leftColumns = knockout.map((r) => ({
-      round: r.round,
-      matches: r.matches.slice(0, Math.ceil(r.matches.length / 2))
-    }));
-    this.rightColumns = [...knockout].reverse().map((r) => ({
-      round: r.round,
-      matches: r.matches.slice(Math.ceil(r.matches.length / 2))
-    }));
+
+    // Izquierda: rondas de fuera (más partidos) hacia el centro. La más externa (índice 0) no recibe
+    // conector entrante (leadin = false).
+    this.leftColumns = knockout.map((r, i, arr) => {
+      const matches = r.matches.slice(0, Math.ceil(r.matches.length / 2));
+      return { round: r.round, matches, pairs: matches.length > 1, leadin: i > 0 } as BracketColumn;
+    });
+
+    // Derecha: espejo. El orden es del centro hacia fuera; la más externa (última) no recibe leadin.
+    const rev = [...knockout].reverse();
+    this.rightColumns = rev.map((r, i) => {
+      const matches = r.matches.slice(Math.ceil(r.matches.length / 2));
+      return { round: r.round, matches, pairs: matches.length > 1, leadin: i < rev.length - 1 } as BracketColumn;
+    });
+
     this.finalMatch = this.bracket.find((r) => r.round === 'Final')?.matches[0] ?? null;
     this.thirdPlace = this.bracket.find((r) => r.round === 'Tercer puesto')?.matches[0] ?? null;
   }
@@ -256,7 +327,8 @@ export class LiveComponent implements OnInit {
   }
 
   /** Nombre del equipo que ganó la final (campeón), o null si aún no se define. */
-  champion(m: BracketMatchItem): string | null {
+  champion(m: BracketMatchItem | null): string | null {
+    if (!m) return null;
     if (m.homeWinner) return m.home?.name ?? null;
     if (m.awayWinner) return m.away?.name ?? null;
     return null;

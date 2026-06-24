@@ -219,6 +219,19 @@ escritos para levantarse con `docker compose up --build`.
 - Estructura por torneo: 2026 (32 al knockout) → R32,R16,QF,SF,Final; 2022 (16) → Octavos,Cuartos,SF,Final.
   `KnockoutBracket`/`buildBracketColumns` manejan ambos. El 3.er puesto se muestra aparte bajo la final.
 
+### Sesión 2026-06-24 (parte 12 — conectores de la llave)
+- [x] Añadidas las **líneas conectoras** entre partidos (codos en "Y") vía `styles` del componente +
+      clases `bk-*`. Técnica: cada `.bk-m` es un slot de igual altura (`flex:1 1 0`), así los dos hermanos
+      quedan centrados respecto al partido de la ronda interior → alineación exacta. Los codos se dibujan
+      con bordes en pseudo-elementos: par exterior `::after` (border-top/bottom + border-right) y entrada
+      `::before` (border-top) en la tarjeta interior; mitad derecha en espejo; la final recibe un tramo de
+      cada lado (`.bk-final::before/::after`). Separación fija `gap:2rem` = 2× tramo (1rem).
+- [x] Columnas con metadata `pairs` (len>1 → dibuja codo) y `leadin` (recibe conector; todas menos la más
+      externa de cada mitad). Campeón + 3.er puesto movidos DEBAJO de la llave para no descentrar la final.
+- [x] Verificado: `ng build` OK.
+- Nota: alineación validada por construcción (slots iguales); si al verla hay un pixel de desfase, se ajusta
+  `min-height` de `.bk-m` o el `gap`/ancho del tramo (1rem) en el bloque `styles`.
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).
