@@ -20,9 +20,11 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Predicciones (% de avanzar por partido) y armado del bracket de eliminatorias del Mundial.
@@ -207,29 +209,62 @@ public class WorldCupPredictionService {
     /**
      * Construye el bracket de eliminatorias agrupado por ronda (16avos → Final). Lee solo de BD;
      * debe ejecutarse dentro de una transacción (accede a asociaciones lazy de los equipos).
+     *
+     * El orden de cada ronda se reconstruye ENLAZANDO POR EQUIPOS, no por fecha: la API no entrega el
+     * enlace del bracket y el orden cronológico NO coincide con el del árbol. Partiendo de la final, los
+     * dos alimentadores de cada partido son aquellos de la ronda previa cuyo GANADOR es uno de sus
+     * participantes. Así, dentro de cada ronda los pares consecutivos (2j, 2j+1) alimentan al partido j
+     * de la ronda siguiente, y la vista de llave (mitades + hermanos i^1) queda correcta.
      */
     @Transactional
     public List<BracketRoundDto> buildBracket(Integer season) {
         List<WorldCupFixture> fixtures = WorldCupFixture.find("season", season).list();
 
-        // Agrupar por ronda de knockout, preservando orden de avance del torneo.
-        Map<Round, List<WorldCupFixture>> byRound = new LinkedHashMap<>();
+        Map<Round, List<WorldCupFixture>> byRound = new EnumMap<>(Round.class);
         for (Round r : Round.values()) byRound.put(r, new ArrayList<>());
         for (WorldCupFixture f : fixtures) {
             Round r = KnockoutBracket.classify(f.round);
             if (r != null) byRound.get(r).add(f);
         }
 
-        List<BracketRoundDto> result = new ArrayList<>();
-        for (Map.Entry<Round, List<WorldCupFixture>> entry : byRound.entrySet()) {
-            Round round = entry.getKey();
-            List<WorldCupFixture> matches = entry.getValue();
-            if (matches.isEmpty()) continue;
+        // Rondas del bracket principal presentes (sin 3er puesto), en orden de avance.
+        List<Round> mainOrder = new ArrayList<>();
+        for (Round r : List.of(Round.ROUND_OF_32, Round.ROUND_OF_16, Round.QUARTER_FINALS,
+                Round.SEMI_FINALS, Round.FINAL)) {
+            if (!byRound.get(r).isEmpty()) mainOrder.add(r);
+        }
 
-            // Orden del bracket: por fecha (nulos al final) para emparejar hermanos de forma estable.
-            matches.sort(Comparator.comparing(
-                    (WorldCupFixture f) -> f.fixtureDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())));
+        // Orden por enlace de equipos: ancla en la última ronda presente (la final) y se expande hacia
+        // abajo. Para cada padre, se colocan sus dos alimentadores consecutivos.
+        Map<Round, List<WorldCupFixture>> ordered = new EnumMap<>(Round.class);
+        if (!mainOrder.isEmpty()) {
+            Round anchor = mainOrder.get(mainOrder.size() - 1);
+            ordered.put(anchor, sortByDate(byRound.get(anchor)));
+            for (int i = mainOrder.size() - 2; i >= 0; i--) {
+                Round r = mainOrder.get(i);
+                List<WorldCupFixture> pool = byRound.get(r);
+                List<WorldCupFixture> seq = new ArrayList<>();
+                Set<WorldCupFixture> used = new HashSet<>();
+                for (WorldCupFixture parent : ordered.get(mainOrder.get(i + 1))) {
+                    WorldCupFixture fh = findFeeder(pool, used, parent.homeTeam);
+                    if (fh != null) { seq.add(fh); used.add(fh); }
+                    WorldCupFixture fa = findFeeder(pool, used, parent.awayTeam);
+                    if (fa != null) { seq.add(fa); used.add(fa); }
+                }
+                // No perder partidos sin enlace (TBD o datos incompletos): se anexan por fecha.
+                for (WorldCupFixture f : sortByDate(pool)) if (!used.contains(f)) seq.add(f);
+                ordered.put(r, seq);
+            }
+        }
+        // El 3.er puesto no es parte del árbol: orden simple por fecha.
+        if (!byRound.get(Round.THIRD_PLACE).isEmpty()) {
+            ordered.put(Round.THIRD_PLACE, sortByDate(byRound.get(Round.THIRD_PLACE)));
+        }
+
+        List<BracketRoundDto> result = new ArrayList<>();
+        for (Round round : Round.values()) {
+            List<WorldCupFixture> matches = ordered.get(round);
+            if (matches == null || matches.isEmpty()) continue;
 
             List<BracketMatchDto> dtos = new ArrayList<>();
             for (int i = 0; i < matches.size(); i++) {
@@ -248,6 +283,31 @@ public class WorldCupPredictionService {
             result.add(new BracketRoundDto(round.label, dtos));
         }
         return result;
+    }
+
+    private List<WorldCupFixture> sortByDate(List<WorldCupFixture> list) {
+        List<WorldCupFixture> copy = new ArrayList<>(list);
+        copy.sort(Comparator.comparing(
+                (WorldCupFixture f) -> f.fixtureDate, Comparator.nullsLast(Comparator.naturalOrder())));
+        return copy;
+    }
+
+    /** Equipo que avanzó (incluye penales, según los flags de la API). */
+    private static WorldCupTeam winnerOf(WorldCupFixture f) {
+        if (Boolean.TRUE.equals(f.homeWinner)) return f.homeTeam;
+        if (Boolean.TRUE.equals(f.awayWinner)) return f.awayTeam;
+        return null;
+    }
+
+    /** Partido del pool (no usado aún) cuyo ganador es {@code team}: su alimentador en la ronda previa. */
+    private static WorldCupFixture findFeeder(List<WorldCupFixture> pool, Set<WorldCupFixture> used, WorldCupTeam team) {
+        if (team == null || team.id == null) return null;
+        for (WorldCupFixture f : pool) {
+            if (used.contains(f)) continue;
+            WorldCupTeam w = winnerOf(f);
+            if (w != null && team.id.equals(w.id)) return f;
+        }
+        return null;
     }
 
     private void addTeam(List<BracketMatchDto.Team> list, WorldCupTeam team) {

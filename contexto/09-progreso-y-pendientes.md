@@ -264,6 +264,24 @@ escritos para levantarse con `docker compose up --build`.
 - Inmediato para el usuario: si fue límite por MINUTO, esperar ~60 s; si fue DIARIO (100/día), esperar al
   reset (medianoche UTC). El throttle evita que vuelva a pasar. Tunear `API_MIN_INTERVAL_MS` según el plan.
 
+### Sesión 2026-06-24 (parte 15 — FIX bracket mal enlazado entre rondas)
+- Síntoma (2022): octavos `NED/USA`+`ARG/AUS` conectaban al cuarto `CRO/BRA` (mal). Real: NED y ARG jugaron
+  el cuarto `NED/ARG`.
+- Causa: `buildBracket` ordenaba cada ronda por FECHA y emparejaba por índice entre rondas, asumiendo
+  orden cronológico = orden del bracket. Falso: el orden por fecha NO coincide con el árbol (p. ej. el
+  cuarto `CRO/BRA` del 9-dic no lo alimentan los primeros octavos por fecha). El emparejamiento DENTRO de
+  una ronda sí era correcto; el enlace ENTRE rondas no.
+- Fix: `buildBracket` ahora reconstruye el orden **enlazando por equipos**, de la final hacia abajo. Para
+  cada partido, sus dos alimentadores son los de la ronda previa cuyo GANADOR (flag de la API, incluye
+  penales) es uno de sus participantes (`winnerOf`/`findFeeder`). Así los pares (2j,2j+1) de cada ronda
+  alimentan al partido j de la siguiente, y la vista de llave (mitades + hermano i^1) queda correcta.
+  Partidos sin enlace (TBD/datos incompletos) se anexan por fecha; el 3.er puesto va aparte.
+- Solo backend (la vista no cambia). Requiere **redeploy del backend**. Verificado: `BUILD SUCCESS` y
+  traza manual del bracket 2022 completa (R16→Final) correcta.
+- Limitación: para un torneo aún sin rondas superiores jugadas (p. ej. 2026 recién en 16avos), no hay
+  ganadores que enlazar y se cae a orden por fecha en la 1.ª ronda; al avanzar el torneo se corrige solo.
+  Para precisión pre-torneo haría falta el mapa oficial del bracket 2026 (pendiente futuro).
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).
