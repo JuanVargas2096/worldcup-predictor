@@ -8,6 +8,7 @@ import {
   ScoringConfig,
   WorldCupFixtureItem,
   BracketRound,
+  ApiKeyStatus,
   SyncResult
 } from '../models/models';
 
@@ -71,5 +72,15 @@ export class ApiService {
   refreshPredictions(season = 2026): Observable<{ updated: number }> {
     const params = new HttpParams().set('season', season);
     return this.http.post<{ updated: number }>(`${this.base}/world-cup/predictions/refresh`, {}, { params });
+  }
+
+  /** Estado de la API key (guardada en BD, enmascarada). */
+  getApiKeyStatus(): Observable<ApiKeyStatus> {
+    return this.http.get<ApiKeyStatus>(`${this.base}/config/api-key`);
+  }
+
+  /** Guarda/actualiza la API key en BD. */
+  setApiKey(value: string): Observable<ApiKeyStatus> {
+    return this.http.put<ApiKeyStatus>(`${this.base}/config/api-key`, { value });
   }
 }

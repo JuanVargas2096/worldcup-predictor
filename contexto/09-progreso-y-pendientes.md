@@ -232,6 +232,22 @@ escritos para levantarse con `docker compose up --build`.
 - Nota: alineación validada por construcción (slots iguales); si al verla hay un pixel de desfase, se ajusta
   `min-height` de `.bk-m` o el `gap`/ancho del tramo (1rem) en el bloque `styles`.
 
+### Sesión 2026-06-24 (parte 13 — API key desde BD, no por variable de entorno)
+- [x] La API key ahora se obtiene de la **BD** (tabla `configuration`, code `FOOTBALL_API_KEY`) como fuente
+      de verdad. `ConfigurationService`: `getApiKey()` (BD→env fallback), `setApiKey()`, `getApiKeySource()`
+      ("db"/"env"/"none"), `getEnvApiKey()`. La variable de entorno queda SOLO como bootstrap.
+- [x] **Bootstrap**: en `DataInitializer.onStart`, si el origen es "env" (BD sin key, env presente) se
+      siembra la key en BD una vez. Tras eso se puede retirar la variable de entorno.
+- [x] Reemplazados los 3 `@ConfigProperty(name="football.api.key")` (WorldCupSyncService,
+      WorldCupPredictionService, ExternalApiFootballDataProvider) por `configurationService.getApiKey()`.
+- [x] **Endpoint** `ConfigResource`: `GET /api/config/api-key` (estado: configured/source/masked) y
+      `PUT /api/config/api-key` ({value}) para gestionarla sin env.
+- [x] **Frontend**: nueva sección en `/#/configuracion` con estado de la key (enmascarada + origen),
+      input password y botón "Guardar key" (`getApiKeyStatus`/`setApiKey`).
+- [x] Verificado: backend `BUILD SUCCESS` y `ng build` OK.
+- Nota: `application.properties` mantiene `football.api.key=${FOOTBALL_API_KEY:NO_KEY}` solo como bootstrap;
+  comentario actualizado. La key real nunca se commitea.
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).

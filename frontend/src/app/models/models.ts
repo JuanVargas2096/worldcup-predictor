@@ -153,6 +153,13 @@ export interface BracketRound {
   matches: BracketMatchItem[];
 }
 
+/** Estado de la API key (guardada en BD). `source`: 'db' | 'env' | 'none'. */
+export interface ApiKeyStatus {
+  configured: boolean;
+  source: string;
+  masked: string | null;
+}
+
 export interface SyncResult {
   totalFixturesReceived: number;
   teamsInserted: number;

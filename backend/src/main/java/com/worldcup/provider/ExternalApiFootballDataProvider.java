@@ -9,7 +9,6 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Typed;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
@@ -17,7 +16,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -41,9 +39,6 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
     private static final int FETCH_LAST = 10;    // cuántos pedir a la API (luego filtramos jugados)
     private static final int STALE_HOURS = 12;   // refrescar si la última importación es más vieja que esto
 
-    @ConfigProperty(name = "football.api.key")
-    Optional<String> apiKey;
-
     @Inject
     @RestClient
     ApiFootballClient apiClient;
@@ -65,8 +60,9 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
 
     /** force=true ignora la antigüedad y refresca todos los equipos (p. ej. botón manual). */
     public int refreshRecentMatches(boolean force) {
-        if (apiKey.isEmpty() || "NO_KEY".equals(apiKey.get())) {
-            log.warn("ExternalApiFootballDataProvider sin API key válida (football.api.key / FOOTBALL_API_KEY).");
+        String apiKey = configService.getApiKey();
+        if (apiKey == null) {
+            log.warn("ExternalApiFootballDataProvider sin API key válida (configuration.FOOTBALL_API_KEY).");
             return 0;
         }
 
@@ -100,7 +96,7 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                 // 2) Llamada HTTP SIN transacción abierta. 'last' trae los partidos más
                 //    recientes de CUALQUIER competición, incluido el Mundial 2026 en curso.
                 ApiFootballResponse<ApiFixture> response =
-                        apiClient.getFixtures(apiKey.get(), null, null, ref.apiId(), FETCH_LAST, null);
+                        apiClient.getFixtures(apiKey, null, null, ref.apiId(), FETCH_LAST, null);
                 configService.registerApiCall();
 
                 if (response == null || response.response() == null || response.response().isEmpty()) {

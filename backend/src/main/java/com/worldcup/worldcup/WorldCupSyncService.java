@@ -1,20 +1,19 @@
 package com.worldcup.worldcup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.worldcup.config.ConfigurationService;
 import com.worldcup.provider.ApiFootballClient;
 import com.worldcup.provider.dto.ApiFixture;
 import com.worldcup.provider.dto.ApiFootballResponse;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Sincroniza equipos y partidos reales del Mundial desde API-Football.
@@ -34,19 +33,20 @@ public class WorldCupSyncService {
     @RestClient
     ApiFootballClient apiClient;
 
-    @ConfigProperty(name = "football.api.key")
-    Optional<String> apiKey;
-
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    ConfigurationService configurationService;
 
     public SyncResult syncWorldCup(Integer leagueId, Integer season) {
         LOG.infof("Iniciando sincronización del Mundial (league: %d, season: %d)...", leagueId, season);
         SyncResult result = new SyncResult();
         result.startedAt = LocalDateTime.now();
 
-        if (apiKey.isEmpty() || "NO_KEY".equals(apiKey.get())) {
-            LOG.error("API Key no configurada (football.api.key / FOOTBALL_API_KEY).");
+        String apiKey = configurationService.getApiKey();
+        if (apiKey == null) {
+            LOG.error("API Key no configurada en BD (configuration.FOOTBALL_API_KEY).");
             result.status = "ERROR: API Key missing";
             result.finishedAt = LocalDateTime.now();
             return result;
@@ -55,7 +55,7 @@ public class WorldCupSyncService {
         try {
             // 1) Llamada HTTP SIN transacción abierta.
             ApiFootballResponse<ApiFixture> response =
-                    apiClient.getFixtures(apiKey.get(), leagueId, season, null, null, null);
+                    apiClient.getFixtures(apiKey, leagueId, season, null, null, null);
 
             if (response == null || response.response() == null) {
                 LOG.warn("Respuesta vacía o nula de la API.");

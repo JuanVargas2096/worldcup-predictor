@@ -80,6 +80,16 @@ Para obtener los partidos reales y alimentar el modelo de scoring:
 - **POST** `/api/world-cup/predictions/refresh`: Refresca las predicciones (HTTP a `/predictions`,
   acotado por la cuota diaria). También lo dispara el scheduler tras cada sincronización.
 
+### Configuración (API key en BD)
+La API key de API-Football se guarda en la **base de datos** (tabla `configuration`, code
+`FOOTBALL_API_KEY`), no en variables de entorno. Se puede gestionar desde la pantalla de
+**Configuración** o por API:
+- **GET** `/api/config/api-key`: estado (configurada, origen `db`/`env`/`none`, enmascarada).
+- **PUT** `/api/config/api-key` `{ "value": "..." }`: guarda/actualiza la key.
+
+La variable de entorno `FOOTBALL_API_KEY` queda solo como **bootstrap**: si la BD aún no tiene key, se
+siembra desde el entorno al arrancar; luego puede retirarse.
+
 ### Predictor & Ranking
 ```
 GET  /api/teams                         GET  /api/rankings

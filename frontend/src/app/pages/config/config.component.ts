@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/api.service';
-import { ScoringConfig } from '../../models/models';
+import { ScoringConfig, ApiKeyStatus } from '../../models/models';
 
 interface WeightField {
   key: keyof ScoringConfig;
@@ -57,6 +57,38 @@ interface WeightField {
         </p>
       </form>
 
+      <!-- API key (API-Football) — guardada en BD -->
+      <div class="bg-white rounded-xl shadow p-4 sm:p-5 mt-6">
+        <h2 class="text-sm font-bold text-night mb-1">API key (API-Football)</h2>
+        <p class="text-xs text-slate-500 mb-3">
+          Se guarda en la base de datos (no en variables de entorno). Necesaria para sincronizar
+          partidos reales y predicciones.
+        </p>
+
+        <div class="flex items-center gap-2 mb-3 text-xs">
+          <span class="font-semibold">Estado:</span>
+          <span *ngIf="apiKeyStatus?.configured" class="text-emerald-700">
+            Configurada ({{ apiKeyStatus?.masked }}) · origen: {{ apiKeyStatus?.source }}
+          </span>
+          <span *ngIf="apiKeyStatus && !apiKeyStatus.configured" class="text-rose-600">No configurada</span>
+        </div>
+
+        <div *ngIf="keyMessage" class="px-3 py-2 rounded mb-3 text-xs"
+             [class.bg-emerald-100]="!keyError" [class.text-emerald-700]="!keyError"
+             [class.bg-rose-100]="keyError" [class.text-rose-700]="keyError">
+          {{ keyMessage }}
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="password" [(ngModel)]="apiKeyInput" name="apiKey" placeholder="Pega aquí tu API key"
+                 class="flex-1 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <button type="button" (click)="saveApiKey()" [disabled]="!apiKeyInput || savingKey"
+                  class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-md text-sm font-semibold transition whitespace-nowrap">
+            {{ savingKey ? 'Guardando…' : 'Guardar key' }}
+          </button>
+        </div>
+      </div>
+
       <!-- Los partidos/forma se actualizan automáticamente cada 6 horas (cron del backend). -->
       <p class="mt-6 text-xs text-slate-400 text-center">
         Los datos de partidos se sincronizan automáticamente cada 6&nbsp;horas.
@@ -78,6 +110,13 @@ export class ConfigComponent implements OnInit {
   message = '';
   isError = false;
 
+  // API key (guardada en BD)
+  apiKeyStatus: ApiKeyStatus | null = null;
+  apiKeyInput = '';
+  savingKey = false;
+  keyMessage = '';
+  keyError = false;
+
   constructor(private api: ApiService) {}
 
   get total(): number {
@@ -96,6 +135,34 @@ export class ConfigComponent implements OnInit {
         this.message = 'No se pudo cargar la configuración.';
         this.isError = true;
         this.loading = false;
+      }
+    });
+    this.loadApiKeyStatus();
+  }
+
+  loadApiKeyStatus(): void {
+    this.api.getApiKeyStatus().subscribe({
+      next: (s) => (this.apiKeyStatus = s),
+      error: () => (this.apiKeyStatus = null)
+    });
+  }
+
+  saveApiKey(): void {
+    if (!this.apiKeyInput.trim()) return;
+    this.savingKey = true;
+    this.keyMessage = '';
+    this.api.setApiKey(this.apiKeyInput.trim()).subscribe({
+      next: (s) => {
+        this.apiKeyStatus = s;
+        this.apiKeyInput = '';
+        this.keyError = false;
+        this.keyMessage = 'API key guardada en la base de datos.';
+        this.savingKey = false;
+      },
+      error: (e) => {
+        this.keyError = true;
+        this.keyMessage = e?.error?.error || 'No se pudo guardar la API key.';
+        this.savingKey = false;
       }
     });
   }

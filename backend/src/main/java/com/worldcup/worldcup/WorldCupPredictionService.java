@@ -10,7 +10,6 @@ import io.quarkus.narayana.jta.QuarkusTransaction;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.jboss.logging.Logger;
 
@@ -23,7 +22,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Predicciones (% de avanzar por partido) y armado del bracket de eliminatorias del Mundial.
@@ -45,9 +43,6 @@ public class WorldCupPredictionService {
     @RestClient
     ApiFootballClient apiClient;
 
-    @ConfigProperty(name = "football.api.key")
-    Optional<String> apiKey;
-
     @Inject
     ObjectMapper objectMapper;
 
@@ -63,8 +58,9 @@ public class WorldCupPredictionService {
      * Devuelve cuántas predicciones se actualizaron.
      */
     public int refreshPredictions(Integer season) {
-        if (apiKey.isEmpty() || "NO_KEY".equals(apiKey.get())) {
-            LOG.debug("Sin API key: se omite el refresco de predicciones.");
+        String apiKey = configurationService.getApiKey();
+        if (apiKey == null) {
+            LOG.debug("Sin API key (configuration.FOOTBALL_API_KEY): se omite el refresco de predicciones.");
             return 0;
         }
 
@@ -82,7 +78,7 @@ public class WorldCupPredictionService {
                 break;
             }
             try {
-                ApiFootballResponse<ApiPrediction> resp = apiClient.getPredictions(apiKey.get(), fixtureId);
+                ApiFootballResponse<ApiPrediction> resp = apiClient.getPredictions(apiKey, fixtureId);
                 configurationService.registerApiCall();
                 if (resp == null || resp.response() == null || resp.response().isEmpty()) {
                     LOG.debugf("Sin predicción para el fixture %d.", fixtureId);
