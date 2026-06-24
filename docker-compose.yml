@@ -16,12 +16,12 @@ services:
       POSTGRES_DB: ${DB_NAME:-worldcup}
     networks:
       - ranger
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    expose:
+      - "5432"
     volumes:
       - worldcup_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-worldcup} -d ${DB_NAME:-worldcup}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME:-worldcup} -d ${DB_NAME:-worldcup}" ]
       interval: 5s
       timeout: 5s
       retries: 15
@@ -42,8 +42,8 @@ services:
       DATA_PROVIDER: ${DATA_PROVIDER:-mock}
       # Sin key real -> la app funciona con datos simulados (no falla).
       FOOTBALL_API_KEY: ${FOOTBALL_API_KEY:-NO_KEY}
-    ports:
-      - "${BACKEND_PORT:-8080}:8080"
+    expose:
+      - "8080"
     depends_on:
       db:
         condition: service_healthy
@@ -56,8 +56,8 @@ services:
       - ranger
     container_name: worldcup-frontend
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-4200}:80"
+    expose:
+      - "80"
     depends_on:
       - backend
 
