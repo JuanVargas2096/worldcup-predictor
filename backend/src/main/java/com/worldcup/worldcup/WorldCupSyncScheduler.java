@@ -1,15 +1,23 @@
 package com.worldcup.worldcup;
 
 import com.worldcup.config.AppParameter;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * Sincroniza el Mundial hasta N veces/día (WORLD_CUP_SYNC_RUNS_PER_DAY, default 6),
+ * repartido por intervalos de 24/N horas.
+ *
+ * El método NO es @Transactional: la sincronización hace HTTP (ver
+ * {@link WorldCupSyncService}) y no debe retener una conexión de BD. Las lecturas
+ * y escrituras de parámetros usan transacciones cortas con {@link QuarkusTransaction}.
+ */
 @ApplicationScoped
 public class WorldCupSyncScheduler {
 
@@ -18,67 +26,67 @@ public class WorldCupSyncScheduler {
     @Inject
     WorldCupSyncService syncService;
 
-    private boolean isRunning = false;
+    private volatile boolean isRunning = false;
 
     @Scheduled(every = "10m")
-    @Transactional
-    public void checkAndSync() {
+    void checkAndSync() {
         if (isRunning) {
-            LOG.debug("La sincronización ya está en ejecución en otro hilo o instancia. Saltando...");
+            LOG.debug("Sincronización ya en ejecución. Saltando...");
             return;
         }
 
-        String nStr = AppParameter.getValue("WORLD_CUP_SYNC_RUNS_PER_DAY", "6");
-        int n;
-        try {
-            n = Integer.parseInt(nStr);
-        } catch (NumberFormatException e) {
-            LOG.warnf("Valor inválido para WORLD_CUP_SYNC_RUNS_PER_DAY: %s. Usando default 6.", nStr);
-            n = 6;
-        }
-
+        int n = parseRunsPerDay(QuarkusTransaction.requiringNew()
+                .call(() -> AppParameter.getValue("WORLD_CUP_SYNC_RUNS_PER_DAY", "6")));
         if (n <= 0) {
             LOG.debug("Sincronización automática desactivada (N <= 0).");
             return;
         }
-
         if (n > 24) n = 24;
-
         long intervalHours = 24 / n;
-        
-        AppParameter lastSyncParam = AppParameter.findByKey("WORLD_CUP_LAST_SYNC");
-        LocalDateTime lastSync = null;
-        if (lastSyncParam != null && lastSyncParam.value != null) {
+
+        LocalDateTime lastSync = QuarkusTransaction.requiringNew().call(() -> {
+            AppParameter p = AppParameter.findByKey("WORLD_CUP_LAST_SYNC");
+            if (p == null || p.value == null) return null;
             try {
-                lastSync = LocalDateTime.parse(lastSyncParam.value);
+                return LocalDateTime.parse(p.value);
             } catch (Exception e) {
                 LOG.warn("Error parseando WORLD_CUP_LAST_SYNC, se ignorará.");
+                return null;
             }
+        });
+
+        if (lastSync != null && ChronoUnit.HOURS.between(lastSync, LocalDateTime.now()) < intervalHours) {
+            return; // aún no toca
         }
 
-        if (lastSync == null || ChronoUnit.HOURS.between(lastSync, LocalDateTime.now()) >= intervalHours) {
-            try {
-                isRunning = true;
-                LOG.infof("Ejecutando sincronización programada (Intervalo: %d horas)...", intervalHours);
-                
-                // League 1 = World Cup, Season 2026
-                syncService.syncWorldCup(1, 2026);
-                
-                // Actualizar última ejecución en BD
-                if (lastSyncParam == null) {
-                    lastSyncParam = new AppParameter();
-                    lastSyncParam.key = "WORLD_CUP_LAST_SYNC";
-                    lastSyncParam.description = "Fecha de la última sincronización automática exitosa";
+        try {
+            isRunning = true;
+            LOG.infof("Ejecutando sincronización programada (intervalo: %d h)...", intervalHours);
+            syncService.syncWorldCup(1, 2026); // gestiona su propio HTTP + transacciones cortas
+            QuarkusTransaction.requiringNew().run(() -> {
+                AppParameter p = AppParameter.findByKey("WORLD_CUP_LAST_SYNC");
+                if (p == null) {
+                    p = new AppParameter();
+                    p.key = "WORLD_CUP_LAST_SYNC";
+                    p.description = "Fecha de la última sincronización automática";
                 }
-                lastSyncParam.value = LocalDateTime.now().toString();
-                lastSyncParam.updatedAt = LocalDateTime.now();
-                lastSyncParam.persist();
-                
-            } catch (Exception e) {
-                LOG.error("Error durante la sincronización programada", e);
-            } finally {
-                isRunning = false;
-            }
+                p.value = LocalDateTime.now().toString();
+                p.updatedAt = LocalDateTime.now();
+                p.persist();
+            });
+        } catch (Exception e) {
+            LOG.error("Error durante la sincronización programada", e);
+        } finally {
+            isRunning = false;
+        }
+    }
+
+    private int parseRunsPerDay(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            LOG.warnf("Valor inválido para WORLD_CUP_SYNC_RUNS_PER_DAY: %s. Usando 6.", value);
+            return 6;
         }
     }
 }

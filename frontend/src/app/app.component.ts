@@ -18,6 +18,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
                class="px-3 py-2 rounded-md hover:bg-slate-700 transition">Ranking</a>
             <a routerLink="/fixture" routerLinkActive="bg-emerald-600"
                class="px-3 py-2 rounded-md hover:bg-slate-700 transition">Fixture</a>
+            <a routerLink="/mundial" routerLinkActive="bg-emerald-600"
+               class="px-3 py-2 rounded-md hover:bg-slate-700 transition">Mundial</a>
             <a routerLink="/configuracion" routerLinkActive="bg-emerald-600"
                class="px-3 py-2 rounded-md hover:bg-slate-700 transition">Configuración</a>
           </nav>

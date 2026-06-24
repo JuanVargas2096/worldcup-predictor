@@ -17,6 +17,7 @@
 | [07-datos-reales-mundial-2026.md](07-datos-reales-mundial-2026.md) | Datos reales: 48 equipos y grupos A–L. Fuentes. |
 | [08-como-ejecutar.md](08-como-ejecutar.md) | Cómo levantar todo con Docker / en local. |
 | [09-progreso-y-pendientes.md](09-progreso-y-pendientes.md) | **Bitácora de avance y TODOs.** Empieza aquí. |
+| [10-despliegue.md](10-despliegue.md) | Despliegue: registry propio, docker-compose, GitHub Actions. |
 
 ## Resumen de una línea
 

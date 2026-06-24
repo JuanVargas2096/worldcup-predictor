@@ -1,42 +1,57 @@
+# World Cup Predictor 2026 - stack completo (db + backend + frontend).
+# Build local:   ./docker-compose.sh   (o: docker compose up --build -d)
+# Push registry: docker compose build && docker compose push
+# Deploy:        docker compose pull && docker compose up -d
+#
+# Variables configurables vía archivo .env (ver .env.example).
+
 services:
   db:
     image: postgres:16-alpine
     container_name: worldcup-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: worldcup
-      POSTGRES_PASSWORD: worldcup
-      POSTGRES_DB: worldcup
+      POSTGRES_USER: ${DB_USERNAME:-worldcup}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-worldcup}
+      POSTGRES_DB: ${DB_NAME:-worldcup}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - worldcup_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U worldcup -d worldcup"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-worldcup} -d ${DB_NAME:-worldcup}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 15
 
   backend:
+    image: ${REGISTRY:-registry.mrvargas.net}/worldcup/backend:${TAG:-latest}
     build:
       context: ./backend
     container_name: worldcup-backend
+    restart: unless-stopped
     environment:
-      DB_URL: jdbc:postgresql://db:5432/worldcup
-      DB_USERNAME: worldcup
-      DB_PASSWORD: worldcup
-      DATA_PROVIDER: mock
+      DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-worldcup}
+      DB_USERNAME: ${DB_USERNAME:-worldcup}
+      DB_PASSWORD: ${DB_PASSWORD:-worldcup}
+      # mock = siembra rápida al arranque; el cron importa datos reales cada 6h.
+      DATA_PROVIDER: ${DATA_PROVIDER:-mock}
+      # Sin key real -> la app funciona con datos simulados (no falla).
+      FOOTBALL_API_KEY: ${FOOTBALL_API_KEY:-NO_KEY}
     ports:
-      - "8080:8080"
+      - "${BACKEND_PORT:-8080}:8080"
     depends_on:
       db:
         condition: service_healthy
 
   frontend:
+    image: ${REGISTRY:-registry.mrvargas.net}/worldcup/frontend:${TAG:-latest}
     build:
       context: ./frontend
     container_name: worldcup-frontend
+    restart: unless-stopped
     ports:
-      - "4200:80"
+      - "${FRONTEND_PORT:-4200}:80"
     depends_on:
       - backend
 

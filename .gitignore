@@ -13,5 +13,10 @@ frontend/.angular/
 .vscode/
 target/
 
+# Secrets / entorno
+.env
+
 # OS
 .DS_Store
+/backend/worldcup-predictor.log.*
+/backend/worldcup-predictor.log

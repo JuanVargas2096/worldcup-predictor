@@ -4,6 +4,7 @@ import com.worldcup.fixture.FixtureGenerator;
 import com.worldcup.match.MatchResult;
 import com.worldcup.provider.FootballDataProvider;
 import com.worldcup.scoring.ScoringService;
+import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -47,8 +48,12 @@ public class DataInitializer {
         // Solo intentamos refrescar si hay pocos o ningún partido, 
         // para no agotar la cuota de la API externa innecesariamente.
         try {
-            long matchesInDb = MatchResult.count();
-            if (matchesInDb < 48) { 
+            // count() necesita una sesion activa: lo ejecutamos en su propia transaccion corta.
+            // OJO: usar lambda, NO referencia a método (MatchResult::count): Panache reescribe
+            // las llamadas invokestatic pero no las method-references, y fallaría con
+            // "did you forget to annotate your entity with @Entity?".
+            long matchesInDb = QuarkusTransaction.requiringNew().call(() -> MatchResult.count());
+            if (matchesInDb < 48) {
                 LOG.info("Pocos partidos en BD. Iniciando importación de forma reciente...");
                 int imported = dataProvider.refreshRecentMatches();
                 LOG.infof("Partidos recientes importados (%s): %d", dataProvider.name(), imported);

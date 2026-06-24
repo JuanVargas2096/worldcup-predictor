@@ -1,6 +1,6 @@
 package com.worldcup.match;
 
-import com.worldcup.provider.FootballDataProvider;
+import com.worldcup.provider.ExternalApiFootballDataProvider;
 import com.worldcup.team.Team;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -25,10 +25,16 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 public class MatchResource {
 
+    /**
+     * Importación real (API-Football). El provider gestiona su HTTP fuera de
+     * transacción y persiste en transacciones cortas; por eso este método NO es
+     * @Transactional (no debe retener una conexión durante el HTTP).
+     */
     @Inject
-    FootballDataProvider dataProvider;
+    ExternalApiFootballDataProvider externalProvider;
 
     @GET
+    @Transactional
     public List<MatchDto> list(@QueryParam("limit") Integer limit) {
         int max = limit == null ? 200 : Math.min(limit, 1000);
         return MatchResult.<MatchResult>find("order by matchDate desc")
@@ -38,6 +44,7 @@ public class MatchResource {
 
     @GET
     @Path("/team/{teamId}/last-five")
+    @Transactional
     public List<MatchDto> lastFive(@PathParam("teamId") UUID teamId) {
         if (Team.findById(teamId) == null) {
             throw new WebApplicationException("Equipo no encontrado", Response.Status.NOT_FOUND);
@@ -70,15 +77,14 @@ public class MatchResource {
         return Response.status(Response.Status.CREATED).entity(MatchDto.from(m)).build();
     }
 
-    /** Importa partidos recientes desde el proveedor configurado (mock/external). */
+    /** Importa partidos reales desde la API y los persiste (acción administrativa). */
     @POST
     @Path("/import")
-    @Transactional
     public Map<String, Object> importMatches() {
-        int imported = dataProvider.refreshRecentMatches();
+        int imported = externalProvider.refreshRecentMatches(true);
         return Map.of(
-                "provider", dataProvider.name(),
+                "provider", externalProvider.name(),
                 "imported", imported,
-                "message", "Partidos recientes importados");
+                "message", "Partidos reales importados desde la API");
     }
 }

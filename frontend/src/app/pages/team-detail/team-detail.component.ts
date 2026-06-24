@@ -1,7 +1,8 @@
 import {
-  AfterViewInit,
+  AfterViewChecked,
   Component,
-   ElementRef,
+  ElementRef,
+  NgZone,
   OnDestroy,
   OnInit,
   ViewChild
@@ -14,6 +15,12 @@ import { TeamDetail } from '../../models/models';
 import { FormBadgesComponent } from '../../components/form-badges.component';
 
 Chart.register(...registerables);
+
+interface BreakdownRow {
+  label: string;
+  value: number;
+  color: string;
+}
 
 @Component({
   selector: 'app-team-detail',
@@ -69,7 +76,7 @@ Chart.register(...registerables);
       <div class="bg-white rounded-xl shadow p-5">
         <h2 class="font-bold text-night mb-3">Desglose del puntaje</h2>
         <div class="space-y-2">
-          <div *ngFor="let b of breakdown(d)">
+          <div *ngFor="let b of breakdownData">
             <div class="flex justify-between text-sm">
               <span class="text-slate-600">{{ b.label }}</span>
               <span class="font-semibold">{{ b.value | number:'1.1-1' }}</span>
@@ -87,10 +94,10 @@ Chart.register(...registerables);
       <!-- Evolución -->
       <div class="bg-white rounded-xl shadow p-5">
         <h2 class="font-bold text-night mb-3">Evolución del score</h2>
-        
+
         <div *ngIf="!d.scoreHistory || d.scoreHistory.length < 2" class="text-sm text-slate-500 bg-emerald-50 p-4 rounded-lg border border-emerald-100">
           <p class="font-semibold text-emerald-800 mb-1">Gráfico de evolución</p>
-          Aún no hay suficientes cálculos para graficar la evolución. 
+          Aún no hay suficientes cálculos para graficar la evolución.
           Presiona el botón <strong>Recalcular</strong> en el ranking para generar un nuevo punto en el historial.
         </div>
 
@@ -106,7 +113,7 @@ Chart.register(...registerables);
           <app-form-badges [matches]="d.ranking.lastFive"></app-form-badges>
         </div>
         <div *ngIf="!d.ranking.lastFive.length" class="text-sm text-slate-500 bg-slate-50 p-4 rounded-lg text-center">
-          No se encontraron partidos recientes para esta selección. 
+          No se encontraron partidos recientes para esta selección.
           Asegúrate de haber importado los datos desde el panel de configuración o mediante el API.
         </div>
         <table *ngIf="d.ranking.lastFive.length" class="min-w-full text-sm">
@@ -123,29 +130,32 @@ Chart.register(...registerables);
     </section>
   `
 })
-export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('chart') set chartCanvas(content: ElementRef<HTMLCanvasElement>) {
-    if (content) {
-      this.chartRef = content;
-      this.renderChart();
-    }
-  }
-  chartRef?: ElementRef<HTMLCanvasElement>;
+export class TeamDetailComponent implements OnInit, AfterViewChecked, OnDestroy {
+  // ViewChild SIN setter con efectos secundarios (un setter que crea el gráfico
+  // provocaba un bucle de detección de cambios con la animación de Chart.js → cuelgue).
+  @ViewChild('chart') chartRef?: ElementRef<HTMLCanvasElement>;
+
   detail?: TeamDetail;
+  breakdownData: BreakdownRow[] = [];
   loading = true;
   error = '';
   private chart?: Chart;
-  private viewReady = false;
 
-  constructor(private route: ActivatedRoute, private api: ApiService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private api: ApiService,
+    private zone: NgZone
+  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
     this.api.getTeamDetail(id).subscribe({
       next: (d) => {
         this.detail = d;
+        this.breakdownData = this.buildBreakdown(d);
         this.loading = false;
-        // La renderización la hará el setter de chartCanvas cuando *ngIf lo muestre
+        // El gráfico se dibuja en ngAfterViewChecked, cuando el <canvas> del *ngIf
+        // ya está en el DOM con su tamaño calculado.
       },
       error: () => {
         this.error = 'No se pudo cargar el detalle del equipo.';
@@ -154,15 +164,17 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  ngAfterViewInit(): void {
-    this.viewReady = true;
+  ngAfterViewChecked(): void {
+    // Se dispara tras cada detección de cambios; cuando el canvas del *ngIf existe
+    // y aún no hay gráfico, lo crea una sola vez (guard `this.chart`).
+    this.renderChart();
   }
 
   ngOnDestroy(): void {
     this.chart?.destroy();
   }
 
-  breakdown(d: TeamDetail) {
+  private buildBreakdown(d: TeamDetail): BreakdownRow[] {
     const r = d.ranking;
     return [
       { label: 'Forma (últimos 5)', value: r.formScore, color: 'bg-emerald-500' },
@@ -174,51 +186,48 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private renderChart(): void {
-    if (!this.viewReady || !this.detail || !this.chartRef) return;
+    // Guard síncrono: si ya existe el gráfico o aún no está el canvas, no hacemos nada.
+    if (this.chart || !this.detail || !this.chartRef) return;
     const history = this.detail.scoreHistory || [];
     if (history.length < 2) return;
-    
-    this.chart?.destroy();
-    this.chart = new Chart(this.chartRef.nativeElement, {
-      type: 'line',
-      data: {
-        labels: history.map((h) => {
-          try {
-            // Manejo de fecha: intentamos parsear el ISO
-            const d = new Date(h.calculatedAt);
-            if (isNaN(d.getTime())) return '---';
-            return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) + 
-                   ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          } catch (e) {
-            return '---';
-          }
-        }),
-        datasets: [
-          {
-            label: 'Score final',
-            data: history.map((h) => h.finalScore),
-            borderColor: '#059669',
-            backgroundColor: 'rgba(5,150,105,0.15)',
-            tension: 0.3,
-            fill: true,
-            pointRadius: history.length > 20 ? 0 : 3
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: { 
-          y: { 
-            beginAtZero: true, 
-            max: 100,
-            ticks: { stepSize: 20 }
-          } 
+
+    const labels = history.map((h) => {
+      const date = new Date(h.calculatedAt);
+      return isNaN(date.getTime())
+        ? '—'
+        : date.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+    });
+    const data = history.map((h) => h.finalScore);
+    const canvas = this.chartRef.nativeElement;
+
+    // Creamos el gráfico FUERA de la zona de Angular (su ResizeObserver/rAF interno
+    // no debe disparar detección de cambios). this.chart se asigna de forma síncrona,
+    // por lo que el guard evita crear el gráfico más de una vez.
+    this.zone.runOutsideAngular(() => {
+      this.chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Score final',
+              data,
+              borderColor: '#059669',
+              backgroundColor: 'rgba(5,150,105,0.15)',
+              tension: 0.3,
+              fill: true,
+              pointRadius: history.length > 20 ? 0 : 3
+            }
+          ]
         },
-        plugins: {
-          legend: { display: false }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          scales: { y: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } },
+          plugins: { legend: { display: false } }
         }
-      }
+      });
     });
   }
 }

@@ -18,6 +18,11 @@ export const routes: Routes = [
       import('./pages/fixture/fixture.component').then((m) => m.FixtureComponent)
   },
   {
+    path: 'mundial',
+    loadComponent: () =>
+      import('./pages/live/live.component').then((m) => m.LiveComponent)
+  },
+  {
     path: 'configuracion',
     loadComponent: () =>
       import('./pages/config/config.component').then((m) => m.ConfigComponent)

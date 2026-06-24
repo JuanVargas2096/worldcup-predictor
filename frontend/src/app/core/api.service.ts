@@ -1,11 +1,13 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   RankingEntry,
   TeamDetail,
   GroupView,
-  ScoringConfig
+  ScoringConfig,
+  WorldCupFixtureItem,
+  SyncResult
 } from '../models/models';
 
 /**
@@ -42,7 +44,18 @@ export class ApiService {
     return this.http.put<ScoringConfig>(`${this.base}/scoring-config`, cfg);
   }
 
-  importMatches(): Observable<any> {
-    return this.http.post(`${this.base}/matches/import`, {});
+  /** Partidos reales del Mundial 2026 sincronizados (solo lectura de BD). */
+  getWorldCupFixtures(season = 2026, status?: string): Observable<WorldCupFixtureItem[]> {
+    let params = new HttpParams().set('season', season);
+    if (status) {
+      params = params.set('status', status);
+    }
+    return this.http.get<WorldCupFixtureItem[]>(`${this.base}/world-cup/fixtures`, { params });
+  }
+
+  /** Dispara una sincronización manual contra la API externa. */
+  syncWorldCup(league = 1, season = 2026): Observable<SyncResult> {
+    const params = new HttpParams().set('league', league).set('season', season);
+    return this.http.post<SyncResult>(`${this.base}/world-cup/sync`, {}, { params });
   }
 }

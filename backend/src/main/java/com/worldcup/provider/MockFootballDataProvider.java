@@ -63,8 +63,9 @@ public class MockFootballDataProvider implements FootballDataProvider {
                 m.awayTeam = opponent;
                 m.homeScore = score[0];
                 m.awayScore = score[1];
-                m.competition = COMPETITIONS[typeIdx];
-                m.matchType = TYPES[typeIdx];
+                m.competition = COMPETITIONS[typeIdx] + " (simulado)";
+                // Marca 'MOCK' para que la importación real (EXTERNAL) pueda reemplazarlos.
+                m.matchType = "MOCK";
                 m.persist();
                 created++;
             }

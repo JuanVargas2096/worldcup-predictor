@@ -97,3 +97,35 @@ export interface ScoringConfig {
   previousWorldCupWeight: number;
   eloWeight: number;
 }
+
+/** Partido real del Mundial 2026 sincronizado desde la API (vista "En vivo"). */
+export interface WorldCupFixtureItem {
+  id: string;
+  apiFixtureId: number;
+  leagueName: string;
+  season: number;
+  round: string;
+  fixtureDate: string;
+  venueName: string;
+  venueCity: string;
+  statusShort: string;
+  statusLong: string;
+  elapsed: number | null;
+  homeTeamName: string;
+  homeTeamLogo: string;
+  homeWinner: boolean | null;
+  goalsHome: number | null;
+  awayTeamName: string;
+  awayTeamLogo: string;
+  awayWinner: boolean | null;
+  goalsAway: number | null;
+}
+
+export interface SyncResult {
+  totalFixturesReceived: number;
+  teamsInserted: number;
+  teamsUpdated: number;
+  fixturesInserted: number;
+  fixturesUpdated: number;
+  status: string;
+}
