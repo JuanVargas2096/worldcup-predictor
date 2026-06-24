@@ -16,7 +16,8 @@ import {
  */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private readonly base = '/api';
+  // El backend cuelga de su contexto /worldcup-service; nginx hace proxy de esta ruta.
+  private readonly base = '/worldcup-service/api';
 
   constructor(private http: HttpClient) {}
 

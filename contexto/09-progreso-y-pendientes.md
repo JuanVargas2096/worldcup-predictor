@@ -126,6 +126,17 @@ escritos para levantarse con `docker compose up --build`.
   - Frontend ya genera imagen nginx (multi-stage). Ver `contexto/10-despliegue.md`.
 - Primer arranque con BD vacía: Flyway (V1..V10) + DataInitializer siembran todo; sin pasos manuales.
 
+### Sesión 2026-06-24 (parte 7 — deploy nginx-proxy/ranger, root-path, hash)
+- Backend con contexto extra: `quarkus.http.root-path=/worldcup-service` (todo cuelga de ahí).
+- Frontend con **hash routing** (`provideRouter(routes, withHashLocation())`) → URLs `/#/...`.
+- `ApiService.base = /worldcup-service/api`; `proxy.conf.json` (dev) proxea `/worldcup-service`.
+- `frontend/nginx.conf` reescrito: sirve SPA + reverse-proxy `/worldcup-service/` →
+  `worldcup-backend:8080` (resolver runtime) + `/healthz`.
+- NUEVO `deploy/docker-compose.yml` (convención internas/deploy): red `ranger` (external),
+  `VIRTUAL_HOST/VIRTUAL_PORT/LETSENCRYPT_HOST/LETSENCRYPT_EMAIL` en el frontend, imágenes del
+  registry, `pull_policy: always`, sin publicar puertos. `PUBLIC_HOST=worldcup-predictions.mrvargas.net`.
+- `.env.example` con `PUBLIC_HOST` y `LETSENCRYPT_EMAIL`. Raíz `docker-compose.yml` queda para local.
+
 ### Notas / pendientes derivados
 - La forma reciente del predictor (`matches`) sigue siendo mock salvo que se pulse
   "Importar partidos" o se ponga `DATA_PROVIDER=external`. El `ExternalApiFootballDataProvider`

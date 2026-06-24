@@ -1,0 +1,81 @@
+# Compose de DESPLIEGUE en el servidor (detrás de jwilder/nginx-proxy + acme-companion).
+# El nginx-proxy descubre el contenedor frontend por VIRTUAL_HOST/LETSENCRYPT_HOST
+# (red "ranger") y el companion emite/renueva el certificado TLS automáticamente.
+#
+# Uso en el servidor:
+#   docker login registry.mrvargas.net
+#   cp .env.example .env   # y editar (PUBLIC_HOST, FOOTBALL_API_KEY, credenciales BD)
+#   docker compose -f deploy/docker-compose.yml pull
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# Ver contexto/10-despliegue.md
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: worldcup-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-worldcup}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-worldcup}
+      POSTGRES_DB: ${DB_NAME:-worldcup}
+    volumes:
+      - worldcup_pgdata:/var/lib/postgresql/data
+    networks:
+      - ranger
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-worldcup} -d ${DB_NAME:-worldcup}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    image: ${REGISTRY:-registry.mrvargas.net}/worldcup/backend:${TAG:-latest}
+    container_name: worldcup-backend
+    restart: always
+    pull_policy: always
+    # No publica puertos: solo accesible dentro de la red por el frontend (nginx).
+    expose:
+      - "8080"
+    environment:
+      DB_URL: jdbc:postgresql://worldcup-db:5432/${DB_NAME:-worldcup}
+      DB_USERNAME: ${DB_USERNAME:-worldcup}
+      DB_PASSWORD: ${DB_PASSWORD:-worldcup}
+      DATA_PROVIDER: ${DATA_PROVIDER:-mock}
+      FOOTBALL_API_KEY: ${FOOTBALL_API_KEY:-NO_KEY}
+    networks:
+      - ranger
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: ${REGISTRY:-registry.mrvargas.net}/worldcup/frontend:${TAG:-latest}
+    container_name: worldcup-frontend
+    restart: always
+    pull_policy: always
+    # No publica puertos: el nginx-proxy enruta 80/443 hacia aquí por VIRTUAL_HOST.
+    expose:
+      - "80"
+    environment:
+      VIRTUAL_HOST: ${PUBLIC_HOST:-worldcup-predictions.mrvargas.net}
+      VIRTUAL_PORT: "80"
+      LETSENCRYPT_HOST: ${PUBLIC_HOST:-worldcup-predictions.mrvargas.net}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-juanra.vargas@gmail.com}
+    networks:
+      - ranger
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  worldcup_pgdata:
+
+networks:
+  # Red existente donde corren nginx-proxy y el acme-companion.
+  ranger:
+    external: true
