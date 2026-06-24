@@ -14,6 +14,8 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-worldcup}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-worldcup}
       POSTGRES_DB: ${DB_NAME:-worldcup}
+    networks:
+      - ranger
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
@@ -30,6 +32,8 @@ services:
       context: ./backend
     container_name: worldcup-backend
     restart: unless-stopped
+    networks:
+      - ranger
     environment:
       DB_URL: jdbc:postgresql://db:5432/${DB_NAME:-worldcup}
       DB_USERNAME: ${DB_USERNAME:-worldcup}
@@ -48,6 +52,8 @@ services:
     image: ${REGISTRY:-registry.mrvargas.net}/worldcup/frontend:${TAG:-latest}
     build:
       context: ./frontend
+    networks:
+      - ranger
     container_name: worldcup-frontend
     restart: unless-stopped
     ports:
@@ -57,3 +63,7 @@ services:
 
 volumes:
   worldcup_pgdata:
+
+networks:
+  ranger:
+    external: true
