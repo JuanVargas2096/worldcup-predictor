@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/api.service';
-import { WorldCupFixtureItem } from '../../models/models';
+import { WorldCupFixtureItem, BracketRound, BracketMatchItem } from '../../models/models';
 
 interface RoundGroup {
   round: string;
@@ -31,6 +31,78 @@ interface RoundGroup {
            [class.bg-rose-100]="isError" [class.text-rose-700]="isError">
         {{ message }}
       </div>
+
+      <!-- ======================= Eliminatorias · Predicciones ======================= -->
+      <div *ngIf="bracket.length" class="mb-8">
+        <h2 class="text-lg sm:text-xl font-bold text-night mb-1">Eliminatorias · Predicciones</h2>
+        <p class="text-xs sm:text-sm text-slate-500 mb-4">
+          Probabilidad de que cada equipo avance y los posibles rivales de la siguiente fase.
+        </p>
+
+        <div *ngFor="let r of bracket" class="mb-6">
+          <h3 class="text-xs sm:text-sm uppercase tracking-wide text-slate-400 font-semibold mb-2">{{ r.round }}</h3>
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div *ngFor="let m of r.matches" class="bg-white rounded-xl shadow p-3 sm:p-4">
+              <!-- Equipos + marcador / fecha / estado -->
+              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <div class="flex items-center gap-1.5 min-w-0 justify-end text-right">
+                  <span class="font-medium text-sm truncate"
+                        [class.text-slate-400]="!m.home">{{ m.home?.name || 'Por definir' }}</span>
+                  <img *ngIf="m.home?.logo" [src]="m.home!.logo" alt="" class="w-5 h-5 object-contain shrink-0" />
+                </div>
+                <div class="text-center px-1 min-w-[56px]">
+                  <div *ngIf="hasGoals(m)" class="font-bold text-night text-base leading-tight">
+                    {{ m.goalsHome }} - {{ m.goalsAway }}
+                  </div>
+                  <div *ngIf="!hasGoals(m)" class="text-[11px] text-slate-500 leading-tight">
+                    {{ m.fixtureDate | date:'dd/MM HH:mm' }}
+                  </div>
+                  <div class="text-[9px] uppercase tracking-wide text-slate-400">{{ m.statusLong || 'Programado' }}</div>
+                </div>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <img *ngIf="m.away?.logo" [src]="m.away!.logo" alt="" class="w-5 h-5 object-contain shrink-0" />
+                  <span class="font-medium text-sm truncate"
+                        [class.text-slate-400]="!m.away">{{ m.away?.name || 'Por definir' }}</span>
+                </div>
+              </div>
+
+              <!-- Barras de probabilidad de avanzar -->
+              <div *ngIf="m.winProbHome !== null && m.winProbAway !== null" class="mt-3">
+                <div class="flex items-center justify-between text-xs font-semibold mb-1">
+                  <span class="text-emerald-700">{{ m.winProbHome | number:'1.0-1' }}%</span>
+                  <span class="text-[9px] text-slate-400 uppercase tracking-wide">Prob. avanzar</span>
+                  <span class="text-sky-700">{{ m.winProbAway | number:'1.0-1' }}%</span>
+                </div>
+                <div class="flex h-2 rounded-full overflow-hidden bg-slate-200">
+                  <div class="bg-emerald-500 h-2" [style.width.%]="m.winProbHome"></div>
+                  <div class="bg-sky-500 h-2" [style.width.%]="m.winProbAway"></div>
+                </div>
+                <p *ngIf="m.advice" class="text-[11px] text-slate-500 mt-1.5">💡 {{ m.advice }}</p>
+              </div>
+              <div *ngIf="m.winProbHome === null && m.home && m.away" class="mt-3 text-[11px] text-slate-400">
+                Predicción aún no disponible.
+              </div>
+
+              <!-- Posibles rivales de la siguiente fase -->
+              <div *ngIf="m.hasNextRound" class="mt-3 pt-3 border-t border-slate-100">
+                <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
+                  Si gana, su rival sería
+                </div>
+                <div *ngIf="m.nextOpponents.length; else porDefinir" class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span *ngFor="let o of m.nextOpponents; let last = last"
+                        class="inline-flex items-center gap-1 text-xs text-night">
+                    <img *ngIf="o.logo" [src]="o.logo" alt="" class="w-4 h-4 object-contain" />
+                    {{ o.name }}
+                    <span *ngIf="!last" class="text-slate-400 font-semibold ml-1">o</span>
+                  </span>
+                </div>
+                <ng-template #porDefinir><div class="text-xs text-slate-400">Por definir</div></ng-template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ============================================================================ -->
 
       <div *ngIf="loading" class="text-slate-500 py-10 text-center">Cargando partidos…</div>
 
@@ -79,6 +151,7 @@ interface RoundGroup {
 export class LiveComponent implements OnInit {
   fixtures: WorldCupFixtureItem[] = [];
   rounds: RoundGroup[] = [];
+  bracket: BracketRound[] = [];
   loading = true;
   syncing = false;
   message = '';
@@ -88,6 +161,7 @@ export class LiveComponent implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.loadBracket();
   }
 
   load(): void {
@@ -106,6 +180,18 @@ export class LiveComponent implements OnInit {
     });
   }
 
+  /** Bracket de eliminatorias con predicciones (no bloquea la lista de partidos si falla). */
+  loadBracket(): void {
+    this.api.getWorldCupBracket(2026).subscribe({
+      next: (data) => (this.bracket = data),
+      error: () => (this.bracket = [])
+    });
+  }
+
+  hasGoals(m: BracketMatchItem): boolean {
+    return m.goalsHome !== null && m.goalsAway !== null;
+  }
+
   sync(): void {
     this.syncing = true;
     this.message = '';
@@ -117,6 +203,7 @@ export class LiveComponent implements OnInit {
           : `Sincronizado: ${res.fixturesInserted} nuevos, ${res.fixturesUpdated} actualizados.`;
         this.syncing = false;
         this.load();
+        this.loadBracket();
       },
       error: (e) => {
         this.message = e?.error?.error || 'Error al sincronizar.';

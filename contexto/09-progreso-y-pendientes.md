@@ -157,6 +157,34 @@ escritos para levantarse con `docker compose up --build`.
   (no `flex-1` sin truncado); en tablas anchas ocultar columnas secundarias con
   `hidden sm:table-cell`/`md:table-cell` y reubicar esa data bajo la celda principal en móvil.
 
+### Sesión 2026-06-24 (parte 9 — eliminatorias: bracket + predicciones por partido)
+- [x] **Predictions API**: nuevo método `ApiFootballClient.getPredictions(key, fixtureId)` (`/predictions`)
+      + DTO de parseo `provider/dto/ApiPrediction` (winner, advice, percent home/draw/away).
+- [x] **Entidad + migración**: `WorldCupPrediction` (tabla `world_cup_prediction`) + `V11__add_world_cup_predictions.sql`.
+      Guarda los percent crudos y `win_home/win_away` = **probabilidad de avanzar** (en knockout no hay
+      empate → el % de empate se redistribuye proporcionalmente entre ambos equipos).
+- [x] **Bracket estático** `KnockoutBracket`: clasifica el texto de ronda de la API (16avos→Final) y define
+      el emparejamiento de hermanos (consecutivo `i XOR 1`) para hallar los "2 posibles rivales" de la
+      siguiente fase. La API NO da el enlace partido→partido; se asume orden cronológico = orden del bracket
+      (corregible aquí si no calza).
+- [x] **Servicio** `WorldCupPredictionService` (DB-first, mismo patrón que el sync):
+      - `refreshPredictions(season)`: HTTP FUERA de tx, persistencia en tx cortas, acotado por cuota
+        (`ConfigurationService.canMakeApiCall/registerApiCall`). Solo partidos de knockout con ambos equipos
+        definidos; refresca si no hay predicción o si está vieja (>12 h) y el partido no terminó.
+      - `buildBracket(season)`: 100% lectura de BD; agrupa por ronda, ordena, calcula rivales posibles.
+- [x] **Endpoints** (`WorldCupResource`): `GET /api/world-cup/bracket?season=2026` (DB-only) y
+      `POST /api/world-cup/predictions/refresh` (acción manual). El `WorldCupSyncScheduler` ahora también
+      llama `refreshPredictions(2026)` tras sincronizar (misma cadencia, sin on-demand por petición).
+- [x] **Frontend**: modelos `BracketRound/BracketMatchItem`, `ApiService.getWorldCupBracket()`, y sección
+      **"Eliminatorias · Predicciones"** arriba de la lista en `/#/mundial` (`live.component`): por partido,
+      equipos+logos, marcador/estado, **barras de % de avanzar** (emerald/sky), `advice`, y bloque
+      **"Si gana, su rival sería"** con los 2 posibles rivales (o "Por definir"). Responsive (grid
+      `[1fr_auto_1fr]`, `truncate`).
+- [x] Verificado: backend `BUILD SUCCESS` (JDK 21, Flyway V11 OK) y `ng build` producción OK.
+- Sin API key o antes de definirse los cruces: el bracket muestra "Por definir" y "Predicción no disponible",
+  sin % ni errores (consistente con el MVP).
+- Riesgo a validar con datos reales: correlación orden-API ↔ orden-bracket en `KnockoutBracket`.
+
 ### Notas / pendientes derivados
 - La forma reciente del predictor (`matches`) sigue siendo mock salvo que se pulse
   "Importar partidos" o se ponga `DATA_PROVIDER=external`. El `ExternalApiFootballDataProvider`

@@ -75,6 +75,10 @@ Para obtener los partidos reales y alimentar el modelo de scoring:
 - **POST** `/api/world-cup/sync`: Dispara la sincronización manual.
 - **GET** `/api/world-cup/fixtures`: Consulta partidos reales del mundial.
   - Filtros: `season`, `teamId`, `status`, `round`, `dateFrom`, `dateTo`.
+- **GET** `/api/world-cup/bracket`: Bracket de eliminatorias con predicciones por partido
+  (% de avanzar de cada equipo y los 2 posibles rivales de la siguiente fase). Solo lectura de BD.
+- **POST** `/api/world-cup/predictions/refresh`: Refresca las predicciones (HTTP a `/predictions`,
+  acotado por la cuota diaria). También lo dispara el scheduler tras cada sincronización.
 
 ### Predictor & Ranking
 ```

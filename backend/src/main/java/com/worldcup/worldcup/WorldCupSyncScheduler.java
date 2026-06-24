@@ -26,6 +26,9 @@ public class WorldCupSyncScheduler {
     @Inject
     WorldCupSyncService syncService;
 
+    @Inject
+    WorldCupPredictionService predictionService;
+
     private volatile boolean isRunning = false;
 
     @Scheduled(every = "10m")
@@ -63,6 +66,9 @@ public class WorldCupSyncScheduler {
             isRunning = true;
             LOG.infof("Ejecutando sincronización programada (intervalo: %d h)...", intervalHours);
             syncService.syncWorldCup(1, 2026); // gestiona su propio HTTP + transacciones cortas
+            // Tras sincronizar fixtures, refrescar predicciones de los partidos de eliminatoria
+            // ya definidos (HTTP fuera de tx, acotado por la cuota diaria de la API).
+            predictionService.refreshPredictions(2026);
             QuarkusTransaction.requiringNew().run(() -> {
                 AppParameter p = AppParameter.findByKey("WORLD_CUP_LAST_SYNC");
                 if (p == null) {

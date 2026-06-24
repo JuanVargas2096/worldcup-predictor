@@ -121,6 +121,36 @@ export interface WorldCupFixtureItem {
   goalsAway: number | null;
 }
 
+/** Equipo dentro de una card del bracket (rival actual o posible rival siguiente). */
+export interface BracketTeam {
+  name: string;
+  logo: string;
+}
+
+/** Partido de eliminatoria con predicción y posibles rivales de la siguiente fase. */
+export interface BracketMatchItem {
+  apiFixtureId: number;
+  round: string;
+  fixtureDate: string;
+  statusShort: string;
+  statusLong: string;
+  home: BracketTeam | null;
+  away: BracketTeam | null;
+  goalsHome: number | null;
+  goalsAway: number | null;
+  winProbHome: number | null;
+  winProbAway: number | null;
+  advice: string | null;
+  hasNextRound: boolean;
+  nextOpponents: BracketTeam[];
+}
+
+/** Una ronda del bracket (16avos, octavos, …) con sus partidos. */
+export interface BracketRound {
+  round: string;
+  matches: BracketMatchItem[];
+}
+
 export interface SyncResult {
   totalFixturesReceived: number;
   teamsInserted: number;

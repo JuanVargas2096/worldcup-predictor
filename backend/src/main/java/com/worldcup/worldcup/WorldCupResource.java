@@ -22,6 +22,9 @@ public class WorldCupResource {
     @Inject
     WorldCupSyncService syncService;
 
+    @Inject
+    WorldCupPredictionService predictionService;
+
     /** Sincronización manual (hace HTTP a la API; acción administrativa puntual). */
     @POST
     @Path("/sync")
@@ -31,6 +34,27 @@ public class WorldCupResource {
         int l = (league != null) ? league : 1;
         int s = (season != null) ? season : 2026;
         return syncService.syncWorldCup(l, s);
+    }
+
+    /**
+     * Bracket de eliminatorias con predicciones por partido (SOLO lectura de BD).
+     * Por cada partido: % de avanzar de cada equipo y los posibles rivales de la siguiente fase.
+     */
+    @GET
+    @Path("/bracket")
+    @Transactional
+    public List<BracketRoundDto> getBracket(@QueryParam("season") Integer season) {
+        int s = (season != null) ? season : 2026;
+        return predictionService.buildBracket(s);
+    }
+
+    /** Refresco manual de predicciones (hace HTTP a /predictions; acotado por cuota). */
+    @POST
+    @Path("/predictions/refresh")
+    public java.util.Map<String, Integer> refreshPredictions(@QueryParam("season") Integer season) {
+        int s = (season != null) ? season : 2026;
+        int updated = predictionService.refreshPredictions(s);
+        return java.util.Map.of("updated", updated);
     }
 
     /**

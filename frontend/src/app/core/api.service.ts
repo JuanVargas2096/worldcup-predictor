@@ -7,6 +7,7 @@ import {
   GroupView,
   ScoringConfig,
   WorldCupFixtureItem,
+  BracketRound,
   SyncResult
 } from '../models/models';
 
@@ -58,5 +59,17 @@ export class ApiService {
   syncWorldCup(league = 1, season = 2026): Observable<SyncResult> {
     const params = new HttpParams().set('league', league).set('season', season);
     return this.http.post<SyncResult>(`${this.base}/world-cup/sync`, {}, { params });
+  }
+
+  /** Bracket de eliminatorias con predicciones por partido (solo lectura de BD). */
+  getWorldCupBracket(season = 2026): Observable<BracketRound[]> {
+    const params = new HttpParams().set('season', season);
+    return this.http.get<BracketRound[]>(`${this.base}/world-cup/bracket`, { params });
+  }
+
+  /** Refresco manual de predicciones (HTTP a la API, acotado por cuota). */
+  refreshPredictions(season = 2026): Observable<{ updated: number }> {
+    const params = new HttpParams().set('season', season);
+    return this.http.post<{ updated: number }>(`${this.base}/world-cup/predictions/refresh`, {}, { params });
   }
 }
