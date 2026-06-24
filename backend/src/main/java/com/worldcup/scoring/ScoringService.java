@@ -9,12 +9,18 @@ import org.jboss.logging.Logger;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 /**
  * Calcula el puntaje 0-100 de cada selección y la probabilidad de ganar el Mundial.
+ * 
+ * FILOSOFÍA DE TOKENS: Este servicio es 100% OFFLINE. Utiliza exclusivamente los 
+ * datos de partidos y configuraciones ya persistidos en la base de datos para 
+ * evitar llamadas a APIs externas durante el cálculo de ranking.
+ * 
  * Detalle del modelo en contexto/04-modelo-scoring.md
  */
 @ApplicationScoped
@@ -33,14 +39,21 @@ public class ScoringService {
     @Transactional
     public int recalculateAll() {
         ScoringConfig cfg = ScoringConfig.active();
-        List<Team> teams = Team.listAll();
+        // Solo calculamos para los equipos que están en el mundial (tienen grupo)
+        List<Team> teams = Team.list("groupLetter is not null");
         if (teams.isEmpty()) {
-            LOG.warn("No hay equipos; no se calcula ranking.");
+            LOG.warn("No hay equipos en fase de grupos; no se calcula ranking.");
             return 0;
         }
 
         List<TeamScore> snapshots = new ArrayList<>();
         for (Team team : teams) {
+            // Si el equipo no tiene historial, creamos un punto inicial "base" 
+            // con la fecha de ayer para que la evolución tenga al menos 2 puntos al terminar.
+            if (TeamScore.count("team", team) == 0) {
+                createInitialSnapshotForTeam(team, cfg);
+            }
+
             FormStats stats = computeFormStats(team);
             TeamScore score = buildScore(team, stats, cfg);
             score.explanation = explanationBuilder.build(team, stats, score);
@@ -54,6 +67,16 @@ public class ScoringService {
         }
         LOG.infof("Ranking recalculado para %d equipos.", snapshots.size());
         return snapshots.size();
+    }
+
+    private void createInitialSnapshotForTeam(Team team, ScoringConfig cfg) {
+        LOG.debugf("Creando snapshot inicial para %s...", team.code);
+        FormStats stats = computeFormStats(team);
+        TeamScore score = buildScore(team, stats, cfg);
+        score.calculatedAt = LocalDateTime.now().minusDays(1);
+        score.explanation = "Snapshot inicial de sistema.";
+        score.winProbability = BigDecimal.ZERO; 
+        score.persist();
     }
 
     /** Agrega los últimos N partidos de un equipo en estadísticas de forma. */

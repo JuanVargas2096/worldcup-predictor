@@ -46,19 +46,19 @@ Chart.register(...registerables);
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="bg-white rounded-xl shadow p-4 text-center">
           <div class="text-2xl font-bold text-night">{{ d.wins }}-{{ d.draws }}-{{ d.losses }}</div>
-          <div class="text-xs text-slate-500">V-E-D ({{ d.played }} part.)</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">V-E-D ({{ d.played }} part.)</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
           <div class="text-2xl font-bold text-night">{{ d.goalsFor }}:{{ d.goalsAgainst }}</div>
-          <div class="text-xs text-slate-500">Goles (dif {{ d.goalDiff >= 0 ? '+' : '' }}{{ d.goalDiff }})</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Goles (Dif {{ d.goalDiff >= 0 ? '+' : '' }}{{ d.goalDiff }})</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
           <div class="text-2xl font-bold text-night">{{ d.averageOpponentStrength | number:'1.0-1' }}</div>
-          <div class="text-xs text-slate-500">Fuerza media rivales</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Fuerza Rival</div>
         </div>
         <div class="bg-white rounded-xl shadow p-4 text-center">
-          <div class="text-sm font-bold text-night">{{ d.previousWorldCupLabel }}</div>
-          <div class="text-xs text-slate-500">Mundial 2022</div>
+          <div class="text-sm font-bold text-night truncate px-1">{{ d.previousWorldCupLabel }}</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Mundial 2022</div>
         </div>
       </div>
 
@@ -84,10 +84,16 @@ Chart.register(...registerables);
       <!-- Evolución -->
       <div class="bg-white rounded-xl shadow p-5">
         <h2 class="font-bold text-night mb-3">Evolución del score</h2>
-        <div *ngIf="d.scoreHistory.length < 2" class="text-sm text-slate-400">
-          Aún no hay suficientes cálculos para graficar la evolución. Recalcula el ranking varias veces.
+        
+        <div *ngIf="!d.scoreHistory || d.scoreHistory.length < 2" class="text-sm text-slate-500 bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+          <p class="font-semibold text-emerald-800 mb-1">Gráfico de evolución</p>
+          Aún no hay suficientes cálculos para graficar la evolución. 
+          Presiona el botón <strong>Recalcular</strong> en el ranking para generar un nuevo punto en el historial.
         </div>
-        <canvas #chart [hidden]="d.scoreHistory.length < 2"></canvas>
+
+        <div class="w-full" style="height: 250px;" *ngIf="d.scoreHistory && d.scoreHistory.length >= 2">
+          <canvas #chart></canvas>
+        </div>
       </div>
 
       <!-- Últimos 5 -->
@@ -96,7 +102,11 @@ Chart.register(...registerables);
           <h2 class="font-bold text-night">Últimos 5 partidos</h2>
           <app-form-badges [matches]="d.ranking.lastFive"></app-form-badges>
         </div>
-        <table class="min-w-full text-sm">
+        <div *ngIf="!d.ranking.lastFive.length" class="text-sm text-slate-500 bg-slate-50 p-4 rounded-lg text-center">
+          No se encontraron partidos recientes para esta selección. 
+          Asegúrate de haber importado los datos desde el panel de configuración o mediante el API.
+        </div>
+        <table *ngIf="d.ranking.lastFive.length" class="min-w-full text-sm">
           <tbody>
             <tr *ngFor="let m of d.ranking.lastFive" class="border-t border-slate-100">
               <td class="py-2 text-slate-400 w-24">{{ m.date }}</td>
@@ -111,7 +121,13 @@ Chart.register(...registerables);
   `
 })
 export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
-  @ViewChild('chart') chartRef?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('chart') set chartCanvas(content: ElementRef<HTMLCanvasElement>) {
+    if (content) {
+      this.chartRef = content;
+      this.renderChart();
+    }
+  }
+  chartRef?: ElementRef<HTMLCanvasElement>;
   detail?: TeamDetail;
   loading = true;
   error = '';
@@ -126,7 +142,7 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (d) => {
         this.detail = d;
         this.loading = false;
-        setTimeout(() => this.renderChart());
+        // La renderización la hará el setter de chartCanvas cuando *ngIf lo muestre
       },
       error: () => {
         this.error = 'No se pudo cargar el detalle del equipo.';
@@ -137,7 +153,6 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     this.viewReady = true;
-    this.renderChart();
   }
 
   ngOnDestroy(): void {
@@ -157,13 +172,24 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private renderChart(): void {
     if (!this.viewReady || !this.detail || !this.chartRef) return;
-    if (this.detail.scoreHistory.length < 2) return;
+    const history = this.detail.scoreHistory || [];
+    if (history.length < 2) return;
+    
     this.chart?.destroy();
-    const history = this.detail.scoreHistory;
     this.chart = new Chart(this.chartRef.nativeElement, {
       type: 'line',
       data: {
-        labels: history.map((_, i) => `#${i + 1}`),
+        labels: history.map((h) => {
+          try {
+            // Manejo de fecha: intentamos parsear el ISO
+            const d = new Date(h.calculatedAt);
+            if (isNaN(d.getTime())) return '---';
+            return d.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) + 
+                   ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          } catch (e) {
+            return '---';
+          }
+        }),
         datasets: [
           {
             label: 'Score final',
@@ -171,13 +197,24 @@ export class TeamDetailComponent implements OnInit, AfterViewInit, OnDestroy {
             borderColor: '#059669',
             backgroundColor: 'rgba(5,150,105,0.15)',
             tension: 0.3,
-            fill: true
+            fill: true,
+            pointRadius: history.length > 20 ? 0 : 3
           }
         ]
       },
       options: {
         responsive: true,
-        scales: { y: { beginAtZero: true, max: 100 } }
+        maintainAspectRatio: false,
+        scales: { 
+          y: { 
+            beginAtZero: true, 
+            max: 100,
+            ticks: { stepSize: 20 }
+          } 
+        },
+        plugins: {
+          legend: { display: false }
+        }
       }
     });
   }

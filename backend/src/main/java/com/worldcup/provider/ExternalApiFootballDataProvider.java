@@ -20,12 +20,17 @@ import java.util.Optional;
 
 /**
  * Punto de extensión para conectar con una API real (API-Football).
+ * 
+ * FILOSOFÍA DE TOKENS: Para minimizar el consumo de créditos de la API externa
+ * y tokens de procesamiento, este proveedor prioriza la persistencia en BD.
+ * Una vez que los partidos están en la base de datos, el sistema de scoring
+ * trabaja exclusivamente con los datos locales (Offline-First).
  */
 @ApplicationScoped
 @Typed(ExternalApiFootballDataProvider.class)
 public class ExternalApiFootballDataProvider implements FootballDataProvider {
 
-    private static final Logger LOG = Logger.getLogger(ExternalApiFootballDataProvider.class);
+    private static final Logger log = Logger.getLogger(ExternalApiFootballDataProvider.class);
 
     @ConfigProperty(name = "football.api.key")
     Optional<String> apiKey;
@@ -46,7 +51,7 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
     @Transactional
     public int refreshRecentMatches() {
         if (apiKey.isEmpty() || "NO_KEY".equals(apiKey.get()) || "REPLAZA_ESTO_CON_TU_KEY".equals(apiKey.get())) {
-            LOG.warn("ExternalApiFootballDataProvider sin API key válida (football.api.key). "
+            log.warn("ExternalApiFootballDataProvider sin API key válida (football.api.key). "
                     + "Configura FOOTBALL_API_KEY.");
             return 0;
         }
@@ -56,19 +61,28 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
 
         for (Team team : teams) {
             if (team.apiId == null) {
-                LOG.debugf("Omitiendo %s: api_id no configurado.", team.code);
+                log.debugf("Omitiendo %s: api_id no configurado.", team.code);
+                continue;
+            }
+
+            // FILOSOFÍA TOKENS: Antes de llamar a la API, verificamos si ya tenemos 
+            // suficientes partidos en la BD para este equipo.
+            long localMatches = MatchResult.count("homeTeam = ?1 or awayTeam = ?1", team);
+            if (localMatches >= 5) {
+                log.debugf("Saltando importación para %s: Ya existen %d partidos en BD.", team.code, localMatches);
                 continue;
             }
 
             if (!configService.canMakeApiCall()) {
-                LOG.warn("Límite de peticiones diarias a la API alcanzado. Deteniendo importación.");
+                log.warn("Límite de peticiones diarias a la API alcanzado. Deteniendo importación.");
                 break;
             }
 
-            // Buscamos los últimos 5 partidos terminados de cada selección
+            // Buscamos los últimos 5 partidos de cada selección.
+            // El parámetro 'last' ya implica que son partidos terminados.
             try {
                 ApiFootballResponse<ApiFixture> response = apiClient.getFixtures(
-                        apiKey.get(), team.apiId, 5, "FT");
+                        apiKey.get(), team.apiId, 5, null);
 
                 configService.registerApiCall();
 
@@ -80,19 +94,18 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
                     }
                 }
             } catch (Exception e) {
-                LOG.errorf("Error importando partidos para %s: %s", team.code, e.getMessage());
+                log.errorf("Error importando partidos para %s: %s", team.code, e.getMessage());
             }
         }
 
-        LOG.infof("ExternalApiFootballDataProvider importó %d nuevos partidos.", totalImported);
+        log.infof("ExternalApiFootballDataProvider importó %d nuevos partidos.", totalImported);
         return totalImported;
     }
 
     private boolean persistIfMissing(ApiFixture api) {
         // Lógica para evitar duplicados y mapear a nuestro MatchResult
-        // Usamos el API ID para un mapeo más robusto que el nombre
-        Team home = Team.findByApiId(api.teams().home().id());
-        Team away = Team.findByApiId(api.teams().away().id());
+        Team home = findOrCreateTeam(api.teams().home());
+        Team away = findOrCreateTeam(api.teams().away());
 
         if (home == null || away == null) return false;
 
@@ -113,5 +126,36 @@ public class ExternalApiFootballDataProvider implements FootballDataProvider {
         m.matchType = "EXTERNAL";
         m.persist();
         return true;
+    }
+
+    private Team findOrCreateTeam(ApiFixture.TeamDetail info) {
+        Team t = Team.findByApiId(info.id());
+        if (t == null) {
+            // Si no está por api_id, lo buscamos por nombre exacto para evitar duplicados
+            t = Team.find("name", info.name()).firstResult();
+            
+            if (t == null) {
+                log.debugf("Creando equipo externo: %s", info.name());
+                t = new Team();
+                t.apiId = info.id();
+                t.name = info.name();
+                // Generamos un código único basado en el nombre y el ID
+                String baseCode = (info.name().length() >= 3) 
+                    ? info.name().substring(0, 3).toUpperCase() 
+                    : (info.name().toUpperCase() + "XX").substring(0, 3);
+                
+                if (Team.findByCode(baseCode) != null) {
+                    baseCode = baseCode.substring(0, 2) + (info.id() % 10);
+                }
+                t.code = baseCode;
+                t.flagEmoji = "🏳️"; // Bandera genérica para externos
+                t.persist();
+            } else {
+                // Si existía por nombre pero no tenía api_id, se lo ponemos
+                t.apiId = info.id();
+                t.persist();
+            }
+        }
+        return t;
     }
 }

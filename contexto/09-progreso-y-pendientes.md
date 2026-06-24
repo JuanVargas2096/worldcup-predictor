@@ -20,6 +20,9 @@ escritos para levantarse con `docker compose up --build`.
 - [x] Sistema de configuración dinámica y control de cuota (rate-limiting) para la API.
 - [x] Bootstrap: genera fixtures round-robin por grupo + partidos recientes + recalcula.
 - [x] Frontend Angular SPA: páginas Ranking, Detalle, Fixture, Configuración.
+- [x] Gráfico de Evolución del Score funcional con historial persistente y etiquetas de tiempo.
+- [x] Soporte para partidos contra equipos externos (no clasificados) para el cálculo de forma.
+- [x] Filosofía "DB-First" para ahorro de tokens de API y procesamiento, con persistencia obligatoria.
 - [x] Dockerfiles + docker-compose.yml + README.
 
 ## Pendiente / Próximos pasos (TODO)

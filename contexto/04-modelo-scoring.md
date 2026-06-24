@@ -73,10 +73,8 @@ prob_i = peso_i / sum(peso_j)  * 100
 ```
 Suma 100% sobre las 48 selecciones. T controla cuán "plano" es el reparto.
 
-## Explicación textual
-`ScoreExplanationBuilder` arma un texto del estilo:
-> "Argentina obtiene 78.4. Excelente forma (13/15 pts en últimos 5), +7 de
-> diferencia de goles, rivales fuertes (prom. 82) y campeón vigente (+15).
-> ELO histórico alto (2100)."
-
-Se guarda en `team_scores.explanation` para transparencia.
+## Fuente de datos y Persistencia
+El modelo es **Offline-First**. No realiza consultas a APIs externas durante el cálculo.
+1. Los partidos recientes se importan una única vez y se persisten en la tabla `match_results`.
+2. El `ScoringService` consulta exclusivamente la base de datos local.
+3. Esto garantiza la velocidad de respuesta, consistencia en los resultados y ahorro de tokens/créditos de API.

@@ -40,7 +40,12 @@ public class DataInitializer {
         int fixtures = fixtureGenerator.generateIfEmpty();
         LOG.infof("Fixtures generados: %d", fixtures);
 
-        if (MatchResult.count() == 0) {
+        // FILOSOFÍA DE TOKENS: Importación bajo demanda o inicial. 
+        // Solo intentamos refrescar si hay pocos o ningún partido, 
+        // para no agotar la cuota de la API externa innecesariamente.
+        long matchesInDb = MatchResult.count();
+        if (matchesInDb < 48) { 
+            LOG.info("Pocos partidos en BD. Iniciando importación de forma reciente...");
             int imported = dataProvider.refreshRecentMatches();
             LOG.infof("Partidos recientes importados (%s): %d", dataProvider.name(), imported);
         }

@@ -56,6 +56,18 @@ interface WeightField {
           La suma debe ser 100% para poder guardar.
         </p>
       </form>
+
+      <!-- Importación de datos -->
+      <div class="mt-8 bg-white rounded-xl shadow p-5">
+        <h2 class="font-bold text-night mb-1">Datos y Partidos</h2>
+        <p class="text-xs text-slate-500 mb-4">
+          Si algunas selecciones no muestran partidos recientes, puedes forzar una importación desde la API externa.
+        </p>
+        <button (click)="importData()" [disabled]="importing"
+                class="w-full border border-emerald-600 text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 py-2 rounded-md font-semibold transition text-sm">
+          {{ importing ? 'Importando partidos…' : 'Importar partidos ahora' }}
+        </button>
+      </div>
     </section>
   `
 })
@@ -70,6 +82,7 @@ export class ConfigComponent implements OnInit {
   percent: Record<string, number> = {};
   loading = true;
   saving = false;
+  importing = false;
   message = '';
   isError = false;
 
@@ -116,6 +129,26 @@ export class ConfigComponent implements OnInit {
         this.message = e?.error?.error || 'No se pudo guardar la configuración.';
         this.isError = true;
         this.saving = false;
+      }
+    });
+  }
+
+  importData(): void {
+    this.importing = true;
+    this.message = '';
+    this.api.importMatches().subscribe({
+      next: (res: any) => {
+        this.message = `Importación completada: ${res.imported} partidos nuevos. Recalculando ranking...`;
+        this.isError = false;
+        // Recalculamos el ranking para que los nuevos partidos influyan
+        this.api.recalculate().subscribe(() => {
+          this.importing = false;
+        });
+      },
+      error: (e) => {
+        this.message = e?.error?.message || 'Error al importar datos de la API.';
+        this.isError = true;
+        this.importing = false;
       }
     });
   }

@@ -41,4 +41,8 @@ export class ApiService {
   updateScoringConfig(cfg: ScoringConfig): Observable<ScoringConfig> {
     return this.http.put<ScoringConfig>(`${this.base}/scoring-config`, cfg);
   }
+
+  importMatches(): Observable<any> {
+    return this.http.post(`${this.base}/matches/import`, {});
+  }
 }

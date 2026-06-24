@@ -54,8 +54,8 @@ import { GroupView, FixtureItem } from '../../models/models';
                 </span>
               </div>
             </div>
-            <div class="text-[11px] text-slate-400 mt-2">
-              📅 {{ g.fixtures[0]?.scheduledDate }} · {{ g.fixtures[0]?.venue }}
+            <div *ngIf="g.fixtures.length > 0" class="text-[11px] text-slate-400 mt-2">
+              📅 {{ g.fixtures[0].scheduledDate }} · {{ g.fixtures[0].venue }}
             </div>
           </div>
         </div>

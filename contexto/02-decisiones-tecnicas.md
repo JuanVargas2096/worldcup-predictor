@@ -32,16 +32,16 @@
    históricos (con marcador, alimentan el scoring). `fixtures` es el calendario
    del Mundial (puede no tener marcador todavía). Mantenerlos separados evita
    nulos en `matches` y mantiene clara la semántica.
-4. **Datos de forma reciente sintéticos pero realistas.** Generar 5+ partidos
-   reales por las 48 selecciones requeriría una fuente en vivo. El MVP usa
-   `MockFootballDataProvider` que genera partidos recientes deterministas según
-   la fuerza (ELO) de cada equipo. **Los grupos y equipos SÍ son reales.** El
-   `ExternalApiFootballDataProvider` queda como punto de extensión para datos
-   reales (API-Football, Sportmonks, football-data.org).
-5. **Probabilidad = softmax sobre el score final.** Convierte los puntajes 0–100
-   en una distribución que suma 100% sobre los 48 equipos (ver doc 04).
-6. **Angular standalone + signals/servicios simples.** Menos ceremonia que
-   NgModules; alineado con Angular moderno.
+4. **Persistencia y ahorro de tokens.** El sistema prioriza el uso de la base de datos local para todos los cálculos. Los datos de partidos recientes se obtienen una única vez vía `ExternalApiFootballDataProvider` y se cargan en la BD. Esto evita llamadas redundantes a APIs externas, ahorrando créditos de API y tokens de procesamiento en cada reinicio o recálculo de ranking.
+5. **Probabilidad = softmax sobre el score final.** Convierte los puntajes 0–100 en una distribución que suma 100% sobre los 48 equipos (ver doc 04).
+6. **Angular standalone + signals/servicios simples.** Menos ceremonia que NgModules; alineado con Angular moderno.
+
+## Estrategia de gestión de tokens (API Credits)
+Para maximizar el uso de la capa gratuita de API-Football (100 peticiones/día), se han tomado las siguientes medidas:
+- **Offline-First:** El `ScoringService` nunca llama a la API externa; solo consume `MatchResult` de la BD.
+- **Importación Inteligente:** `ExternalApiFootballDataProvider` verifica si el equipo ya tiene suficientes partidos en BD antes de disparar una petición.
+- **Cache de Configuración:** Los límites diarios se gestionan en una tabla `configuration` persistente.
+- **Llamadas Batch:** La importación se realiza por selección, guardando los últimos 5 resultados de forma atómica.
 
 ## Versiones fijadas (para reproducibilidad)
 - Quarkus BOM: `3.17.5`
