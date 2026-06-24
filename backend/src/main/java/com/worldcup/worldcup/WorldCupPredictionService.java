@@ -254,6 +254,8 @@ public class WorldCupPredictionService {
                 f.awayTeam != null ? new BracketMatchDto.Team(f.awayTeam.name, f.awayTeam.logoUrl) : null,
                 f.goalsHome,
                 f.goalsAway,
+                f.homeWinner,
+                f.awayWinner,
                 p != null ? p.winHome : null,
                 p != null ? p.winAway : null,
                 p != null ? p.advice : null,

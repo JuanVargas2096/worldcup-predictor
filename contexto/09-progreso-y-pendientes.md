@@ -200,6 +200,25 @@ escritos para levantarse con `docker compose up --build`.
   vacías desde la API; en ese caso el bracket muestra resultados reales + posibles rivales, pero sin barras %.
 - Pendiente de despliegue + verificación con datos reales (ver abajo).
 
+### Sesión 2026-06-24 (parte 11 — vista de LLAVE (bracket) de dos lados)
+- [x] La sección "Eliminatorias" pasó de lista de cards a una **llave de torneo de dos mitades** que
+      convergen al centro (final). `live.component`:
+      - `buildBracketColumns()` reparte cada ronda: primera mitad → `leftColumns` (fuera→centro), segunda
+        mitad → `rightColumns` (centro→fuera, ronda invertida); `finalMatch` al centro y `thirdPlace` debajo.
+        Usa el mismo emparejamiento de hermanos del backend (orden por fecha), ya validado con 2022.
+      - Plantilla de celda reutilizable (`<ng-template #cell>` + `ngTemplateOutlet`): 2 filas (local/visitante)
+        con bandera, nombre (truncate), **% de avanzar** y marcador; resalta en verde a quien pasó de ronda;
+        `title=advice` en hover. Final con borde ámbar + "Campeón: X".
+      - Columnas con `justify-around` para el efecto de convergencia; contenedor `overflow-x-auto` →
+        scroll horizontal en móvil (con hint "↔ Desliza"). Anchos compactos (140–185px).
+- [x] **Backend**: `BracketMatchDto` ahora incluye `homeWinner/awayWinner` (de la API, con desempate por
+      penales) para resaltar al que avanzó; `WorldCupPredictionService.toMatchDto` los pasa. Modelo TS
+      `BracketMatchItem` actualizado.
+- [x] Verificado: `ng build` OK y backend `BUILD SUCCESS`. (Requiere redeploy del backend para los nuevos
+      campos `homeWinner/awayWinner`; sin redeploy llegan `null` y solo no se resalta el ganador.)
+- Estructura por torneo: 2026 (32 al knockout) → R32,R16,QF,SF,Final; 2022 (16) → Octavos,Cuartos,SF,Final.
+  `KnockoutBracket`/`buildBracketColumns` manejan ambos. El 3.er puesto se muestra aparte bajo la final.
+
 ### Fix arranque (2026-06-24): V8 fallaba por colisión de teams.code (Belarus 'BEL' = Bélgica)
 - Síntoma: `docker compose up` → Flyway aplica V8 (out-of-order) y revienta con
   `duplicate key value violates unique constraint "teams_code_key"` (Belarus→'BEL' choca con Bélgica).

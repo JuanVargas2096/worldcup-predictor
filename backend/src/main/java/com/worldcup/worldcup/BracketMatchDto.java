@@ -18,6 +18,9 @@ public record BracketMatchDto(
         Team away,
         Integer goalsHome,
         Integer goalsAway,
+        /** Quién avanzó (incluye desempate por penales, según la API). */
+        Boolean homeWinner,
+        Boolean awayWinner,
         BigDecimal winProbHome,
         BigDecimal winProbAway,
         String advice,

@@ -138,6 +138,8 @@ export interface BracketMatchItem {
   away: BracketTeam | null;
   goalsHome: number | null;
   goalsAway: number | null;
+  homeWinner: boolean | null;
+  awayWinner: boolean | null;
   winProbHome: number | null;
   winProbAway: number | null;
   advice: string | null;

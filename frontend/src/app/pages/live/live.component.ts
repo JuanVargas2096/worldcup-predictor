@@ -44,76 +44,81 @@ interface RoundGroup {
         {{ message }}
       </div>
 
-      <!-- ======================= Eliminatorias · Predicciones ======================= -->
+      <!-- ======================= Eliminatorias · Llave (bracket) ======================= -->
       <div *ngIf="bracket.length" class="mb-8">
-        <h2 class="text-lg sm:text-xl font-bold text-night mb-1">Eliminatorias · Predicciones</h2>
-        <p class="text-xs sm:text-sm text-slate-500 mb-4">
-          Probabilidad de que cada equipo avance y los posibles rivales de la siguiente fase.
+        <h2 class="text-lg sm:text-xl font-bold text-night mb-1">Eliminatorias · Llave</h2>
+        <p class="text-xs sm:text-sm text-slate-500 mb-1">
+          Dos llaves que convergen hacia la final. El % es la probabilidad de avanzar; en verde, quien pasó de ronda.
         </p>
+        <p class="text-[11px] text-slate-400 mb-3 sm:hidden">↔ Desliza horizontalmente para ver toda la llave.</p>
 
-        <div *ngFor="let r of bracket" class="mb-6">
-          <h3 class="text-xs sm:text-sm uppercase tracking-wide text-slate-400 font-semibold mb-2">{{ r.round }}</h3>
-          <div class="grid sm:grid-cols-2 gap-3">
-            <div *ngFor="let m of r.matches" class="bg-white rounded-xl shadow p-3 sm:p-4">
-              <!-- Equipos + marcador / fecha / estado -->
-              <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-                <div class="flex items-center gap-1.5 min-w-0 justify-end text-right">
-                  <span class="font-medium text-sm truncate"
-                        [class.text-slate-400]="!m.home">{{ m.home?.name || 'Por definir' }}</span>
-                  <img *ngIf="m.home?.logo" [src]="m.home!.logo" alt="" class="w-5 h-5 object-contain shrink-0" />
-                </div>
-                <div class="text-center px-1 min-w-[56px]">
-                  <div *ngIf="hasGoals(m)" class="font-bold text-night text-base leading-tight">
-                    {{ m.goalsHome }} - {{ m.goalsAway }}
-                  </div>
-                  <div *ngIf="!hasGoals(m)" class="text-[11px] text-slate-500 leading-tight">
-                    {{ m.fixtureDate | date:'dd/MM HH:mm' }}
-                  </div>
-                  <div class="text-[9px] uppercase tracking-wide text-slate-400">{{ m.statusLong || 'Programado' }}</div>
-                </div>
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <img *ngIf="m.away?.logo" [src]="m.away!.logo" alt="" class="w-5 h-5 object-contain shrink-0" />
-                  <span class="font-medium text-sm truncate"
-                        [class.text-slate-400]="!m.away">{{ m.away?.name || 'Por definir' }}</span>
-                </div>
-              </div>
+        <div class="overflow-x-auto pb-3">
+          <div class="flex items-stretch gap-2 sm:gap-3 w-max mx-auto">
 
-              <!-- Barras de probabilidad de avanzar -->
-              <div *ngIf="m.winProbHome !== null && m.winProbAway !== null" class="mt-3">
-                <div class="flex items-center justify-between text-xs font-semibold mb-1">
-                  <span class="text-emerald-700">{{ m.winProbHome | number:'1.0-1' }}%</span>
-                  <span class="text-[9px] text-slate-400 uppercase tracking-wide">Prob. avanzar</span>
-                  <span class="text-sky-700">{{ m.winProbAway | number:'1.0-1' }}%</span>
-                </div>
-                <div class="flex h-2 rounded-full overflow-hidden bg-slate-200">
-                  <div class="bg-emerald-500 h-2" [style.width.%]="m.winProbHome"></div>
-                  <div class="bg-sky-500 h-2" [style.width.%]="m.winProbAway"></div>
-                </div>
-                <p *ngIf="m.advice" class="text-[11px] text-slate-500 mt-1.5">💡 {{ m.advice }}</p>
-              </div>
-              <div *ngIf="m.winProbHome === null && m.home && m.away" class="mt-3 text-[11px] text-slate-400">
-                Predicción aún no disponible.
-              </div>
-
-              <!-- Posibles rivales de la siguiente fase -->
-              <div *ngIf="m.hasNextRound" class="mt-3 pt-3 border-t border-slate-100">
-                <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold mb-1">
-                  Si gana, su rival sería
-                </div>
-                <div *ngIf="m.nextOpponents.length; else porDefinir" class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span *ngFor="let o of m.nextOpponents; let last = last"
-                        class="inline-flex items-center gap-1 text-xs text-night">
-                    <img *ngIf="o.logo" [src]="o.logo" alt="" class="w-4 h-4 object-contain" />
-                    {{ o.name }}
-                    <span *ngIf="!last" class="text-slate-400 font-semibold ml-1">o</span>
-                  </span>
-                </div>
-                <ng-template #porDefinir><div class="text-xs text-slate-400">Por definir</div></ng-template>
+            <!-- Mitad izquierda: rondas de fuera hacia el centro -->
+            <div *ngFor="let col of leftColumns" class="flex flex-col w-[140px] sm:w-[165px] shrink-0">
+              <div class="h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
+              <div class="flex-1 flex flex-col justify-around gap-2">
+                <ng-container *ngFor="let m of col.matches"
+                              [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
               </div>
             </div>
+
+            <!-- Centro: Final (+ tercer puesto) -->
+            <div *ngIf="finalMatch" class="flex flex-col justify-center w-[160px] sm:w-[185px] shrink-0">
+              <div class="h-6 text-[11px] sm:text-xs uppercase tracking-wide text-amber-600 font-bold text-center mb-1">🏆 Final</div>
+              <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: finalMatch, big: true }"></ng-container>
+              <div *ngIf="champion(finalMatch) as champ" class="mt-2 text-center text-xs font-bold text-amber-600">
+                Campeón: {{ champ }}
+              </div>
+              <div *ngIf="thirdPlace" class="mt-5">
+                <div class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">3.er puesto</div>
+                <ng-container [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: thirdPlace }"></ng-container>
+              </div>
+            </div>
+
+            <!-- Mitad derecha: rondas del centro hacia fuera -->
+            <div *ngFor="let col of rightColumns" class="flex flex-col w-[140px] sm:w-[165px] shrink-0">
+              <div class="h-6 text-[10px] sm:text-[11px] uppercase tracking-wide text-slate-400 font-semibold text-center mb-1">{{ col.round }}</div>
+              <div class="flex-1 flex flex-col justify-around gap-2">
+                <ng-container *ngFor="let m of col.matches"
+                              [ngTemplateOutlet]="cell" [ngTemplateOutletContext]="{ m: m }"></ng-container>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
+
+      <!-- Plantilla de celda de partido (reutilizada en ambas mitades y la final) -->
+      <ng-template #cell let-m="m" let-big="big">
+        <div class="bg-white rounded-lg shadow-sm overflow-hidden" [title]="m.advice || ''"
+             [class.border-2]="big" [class.border-amber-300]="big"
+             [class.border]="!big" [class.border-slate-200]="!big">
+          <!-- Local -->
+          <div class="flex items-center gap-1.5 px-2 py-1 border-b border-slate-100" [class.bg-emerald-50]="m.homeWinner">
+            <img *ngIf="m.home?.logo" [src]="m.home?.logo" alt="" class="w-4 h-4 object-contain shrink-0" />
+            <span class="flex-1 truncate text-[11px] sm:text-xs" [class.font-bold]="m.homeWinner"
+                  [class.text-slate-400]="!m.home">{{ m.home?.name || 'Por definir' }}</span>
+            <span *ngIf="m.winProbHome !== null" class="text-[9px] text-emerald-700 tabular-nums shrink-0">{{ m.winProbHome | number:'1.0-0' }}%</span>
+            <span *ngIf="hasGoals(m)" class="text-xs font-bold tabular-nums w-3 text-center shrink-0"
+                  [class.text-slate-400]="m.awayWinner && !m.homeWinner">{{ m.goalsHome }}</span>
+          </div>
+          <!-- Visitante -->
+          <div class="flex items-center gap-1.5 px-2 py-1" [class.bg-emerald-50]="m.awayWinner">
+            <img *ngIf="m.away?.logo" [src]="m.away?.logo" alt="" class="w-4 h-4 object-contain shrink-0" />
+            <span class="flex-1 truncate text-[11px] sm:text-xs" [class.font-bold]="m.awayWinner"
+                  [class.text-slate-400]="!m.away">{{ m.away?.name || 'Por definir' }}</span>
+            <span *ngIf="m.winProbAway !== null" class="text-[9px] text-sky-700 tabular-nums shrink-0">{{ m.winProbAway | number:'1.0-0' }}%</span>
+            <span *ngIf="hasGoals(m)" class="text-xs font-bold tabular-nums w-3 text-center shrink-0"
+                  [class.text-slate-400]="m.homeWinner && !m.awayWinner">{{ m.goalsAway }}</span>
+          </div>
+          <!-- Fecha si aún no se jugó -->
+          <div *ngIf="!hasGoals(m) && (m.home || m.away)" class="text-[8px] text-slate-400 text-center py-0.5 bg-slate-50">
+            {{ m.fixtureDate | date:'dd/MM HH:mm' }}
+          </div>
+        </div>
+      </ng-template>
       <!-- ============================================================================ -->
 
       <div *ngIf="loading" class="text-slate-500 py-10 text-center">Cargando partidos…</div>
@@ -166,6 +171,11 @@ export class LiveComponent implements OnInit {
   fixtures: WorldCupFixtureItem[] = [];
   rounds: RoundGroup[] = [];
   bracket: BracketRound[] = [];
+  // Columnas de la llave (bracket de dos lados que converge en la final).
+  leftColumns: { round: string; matches: BracketMatchItem[] }[] = [];
+  rightColumns: { round: string; matches: BracketMatchItem[] }[] = [];
+  finalMatch: BracketMatchItem | null = null;
+  thirdPlace: BracketMatchItem | null = null;
   loading = true;
   syncing = false;
   message = '';
@@ -187,6 +197,7 @@ export class LiveComponent implements OnInit {
     this.fixtures = [];
     this.rounds = [];
     this.bracket = [];
+    this.buildBracketColumns();
     this.load();
     this.loadBracket();
   }
@@ -210,13 +221,45 @@ export class LiveComponent implements OnInit {
   /** Bracket de eliminatorias con predicciones (no bloquea la lista de partidos si falla). */
   loadBracket(): void {
     this.api.getWorldCupBracket(this.season).subscribe({
-      next: (data) => (this.bracket = data),
-      error: () => (this.bracket = [])
+      next: (data) => {
+        this.bracket = data;
+        this.buildBracketColumns();
+      },
+      error: () => {
+        this.bracket = [];
+        this.buildBracketColumns();
+      }
     });
+  }
+
+  /**
+   * Reparte las rondas en dos mitades para dibujar la llave: la primera mitad de cada ronda va a la
+   * izquierda y la segunda a la derecha (mismo emparejamiento de hermanos del backend). La final queda
+   * al centro y el 3.er puesto debajo de ella.
+   */
+  private buildBracketColumns(): void {
+    const knockout = this.bracket.filter((r) => r.round !== 'Final' && r.round !== 'Tercer puesto');
+    this.leftColumns = knockout.map((r) => ({
+      round: r.round,
+      matches: r.matches.slice(0, Math.ceil(r.matches.length / 2))
+    }));
+    this.rightColumns = [...knockout].reverse().map((r) => ({
+      round: r.round,
+      matches: r.matches.slice(Math.ceil(r.matches.length / 2))
+    }));
+    this.finalMatch = this.bracket.find((r) => r.round === 'Final')?.matches[0] ?? null;
+    this.thirdPlace = this.bracket.find((r) => r.round === 'Tercer puesto')?.matches[0] ?? null;
   }
 
   hasGoals(m: BracketMatchItem): boolean {
     return m.goalsHome !== null && m.goalsAway !== null;
+  }
+
+  /** Nombre del equipo que ganó la final (campeón), o null si aún no se define. */
+  champion(m: BracketMatchItem): string | null {
+    if (m.homeWinner) return m.home?.name ?? null;
+    if (m.awayWinner) return m.away?.name ?? null;
+    return null;
   }
 
   sync(): void {
