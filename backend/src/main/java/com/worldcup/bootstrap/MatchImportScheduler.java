@@ -29,7 +29,7 @@ public class MatchImportScheduler {
 
     private volatile boolean running = false;
 
-    @Scheduled(cron = "0 */15 * * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
+    @Scheduled(cron = "0 */5 * * * ?", concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void importRecentMatches() {
         if (running) {
             return;
